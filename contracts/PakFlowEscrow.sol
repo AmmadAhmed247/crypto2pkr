@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.33;
+pragma solidity 0.8.24;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract PakFlowVault is ReentrancyGuard {
     address public owner;
@@ -63,34 +63,44 @@ contract PakFlowVault is ReentrancyGuard {
         require(IERC20(_token).transfer(owner,_amount),"Transfered Failed!");
     }
 
-
-    function lockUserRequest(address _token , uint256 _amount , string memory _raastId)external  nonReentrant{
-        require(_amount > 0 , "Must be greater than 0!");
-        require(whiteListedTokens[_token],"The token is not in the List");
-        Withdrawal storage existing=pendingWithdrawals[msg.sender];
-        require(existing.amount==0 || existing.isProcessed , "Previous request is in Pending!");
-        require(IERC20(_token).transferFrom(msg.sender,address(this),_amount),"Transaction Failed!");
-
-        pendingWithdrawals[msg.sender]=Withdrawal(_amount , _raastId , false);
-        emit LockInitiated(msg.sender, _token, _amount, _raastId, block.timestamp);
-
+    function lockUserRequest(address _token, uint256 _amount, string memory _raastId) external payable nonReentrant {
+    require(_amount > 0, "Must be greater than 0!");
+    require(whiteListedTokens[_token], "The token is not in the List");
+    if (_token == address(0)) {
+        require(msg.value == _amount, "Incorrect Eth amount!");
+    } else {
+        require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), "Transaction Failed!");
     }
+
+    Withdrawal storage existing = pendingWithdrawals[msg.sender];
+    require(existing.amount == 0 || existing.isProcessed, "Previous request is in Pending!");
+
+    pendingWithdrawals[msg.sender] = Withdrawal(_amount, _raastId, false);
+    emit LockInitiated(msg.sender, _token, _amount, _raastId, block.timestamp);
+}
 
     function confirmPayout(address _user , address _token)external onlyRelay nonReentrant {
         Withdrawal storage request=pendingWithdrawals[_user];
         require(!request.isProcessed , "Already Processed!");
         require(request.amount>0 ,"No Pending Request!");
-        // request.isProcessed=true; This is unnecessary because we have to delete the rqst in the end hmm 
+        if(_token== address(0)){
+            (bool success , )=owner.call{value:request.amount}("");
         //transfer locked crypto to treasury Wallet 
-        require(IERC20(_token).transfer(owner , request.amount),"Trasnfer to treasury Failed!");
+            require(success , "ETH Transaction Failed!");
+        }else{
+        //transfer locked crypto to treasury Wallet 
+            require(IERC20(_token).transfer(owner , request.amount),"Trasnfer to treasury Failed!");
+
+        }
         emit PayoutConfirmed(_user, _token, request.amount);
+        // request.isProcessed=true; This is unnecessary because we have to delete the rqst in the end hmm 
         // delete the withdrawl request 
         delete pendingWithdrawals[_user];
     }
 
 
    // view fn for frontend maybe 
-   function getPendingWithdrawals(address _user)external view returns (uint256 amount , string raastId , bool isProcessed) {
+   function getPendingWithdrawals(address _user)external view returns (uint256 amount , string memory raastId , bool isProcessed) {
     Withdrawal storage request=pendingWithdrawals[_user];
     return (request.amount , request.raastId , request.isProcessed);
    } 
