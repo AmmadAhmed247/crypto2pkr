@@ -1,107 +1,134 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract PakFlowVault is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     address public owner;
     address public relayServer;
+    uint256 public constant REFUND_TIMELOCK = 1 hours;
 
-    struct Withdrawal{
+    struct Withdrawal {
+        address token;
         uint256 amount; 
         string raastId;
+        uint256 timestamp;
         bool isProcessed;
     }
 
-    mapping(address=>Withdrawal) public pendingWithdrawals;
-    mapping(address => bool ) public whiteListedTokens;
-    event LockInitiated(address indexed user , address indexed token , uint256 amount ,string raastId ,uint256 timestamped);
-    event PayoutConfirmed(address indexed user , address indexed token , uint256 amount);
-    event TokenWhiteListed(address indexed token , bool status);
+    mapping(address => Withdrawal) public pendingWithdrawals;
+    mapping(address => bool) public whiteListedTokens;
 
-    // we can use bool too but it cost more fees 
-    // uint256 private locked=1;
-    // modifier nonReentrant(){
-    //     require(locked==1 , "Reentrant called");
-    //     locked=2;
-    //     _;
-    //     locked=1;
-    // }
-    modifier onlyOwner(){
-        require(msg.sender == owner , "Only owner can access!");
+    event LockInitiated(address indexed user, address indexed token, uint256 amount, string raastId, uint256 timestamp);
+    event PayoutConfirmed(address indexed user, address indexed token, uint256 amount);
+    event RefundClaim(address indexed user, address indexed token, uint256 amount);
+    event TokenWhiteListed(address indexed token, bool status);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can access!");
         _;
     }
 
-    modifier onlyRelay(){
-        require(msg.sender==relayServer , "Not Authorized Server ");
+    modifier onlyRelay() {
+        require(msg.sender == relayServer, "Not Authorized Server");
         _;
     }
 
-    constructor (address _relayServer , address [] memory _tokens){
-        owner=msg.sender;
-        relayServer=_relayServer;
-
+    constructor(address _relayServer, address[] memory _tokens) {
+        owner = msg.sender;
+        relayServer = _relayServer;
         for (uint256 i = 0; i < _tokens.length; i++) {
-            whiteListedTokens[_tokens[i]]=true;
+            whiteListedTokens[_tokens[i]] = true;
             emit TokenWhiteListed(_tokens[i], true);
         }
     }
 
-    function updateRelayServer(address _relayServer)external onlyOwner{
-        relayServer=_relayServer;
-    } 
+    function updateRelayServer(address _relayServer) external onlyOwner {
+        relayServer = _relayServer;
+    }
 
-    // update whitelisted token list
-
-    function updateWhiteListedTokenList(address _token , bool _status )external onlyOwner{
-        whiteListedTokens[_token]=_status;
+    function updateWhiteListedTokenList(address _token, bool _status) external onlyOwner {
+        whiteListedTokens[_token] = _status;
         emit TokenWhiteListed(_token, _status);
     }
 
-
-    function emerygencyWithdraw(address _token , uint256 _amount  )external onlyOwner {
-        require(IERC20(_token).transfer(owner,_amount),"Transfered Failed!");
+    function emergencyWithdraw(address _token, uint256 _amount) external onlyOwner {
+        if (_token == address(0)) {
+            (bool success, ) = owner.call{value: _amount}("");
+            require(success, "ETH Withdraw Failed");
+        } else {
+            IERC20(_token).safeTransfer(owner, _amount);
+        }
     }
 
     function lockUserRequest(address _token, uint256 _amount, string memory _raastId) external payable nonReentrant {
-    require(_amount > 0, "Must be greater than 0!");
-    require(whiteListedTokens[_token], "The token is not in the List");
-    if (_token == address(0)) {
-        require(msg.value == _amount, "Incorrect Eth amount!");
-    } else {
-        require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), "Transaction Failed!");
+        require(_amount > 0, "Amount must be greater than 0");
+        require(whiteListedTokens[_token], "Token not whitelisted");
+        require(pendingWithdrawals[msg.sender].amount == 0, "Wait for previous request");
+
+        if (_token == address(0)) {
+            require(msg.value == _amount, "Incorrect ETH sent");
+        } else {
+            IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        }
+
+        pendingWithdrawals[msg.sender] = Withdrawal({
+            token: _token,
+            amount: _amount,
+            raastId: _raastId,
+            timestamp: block.timestamp,
+            isProcessed: false
+        });
+
+        emit LockInitiated(msg.sender, _token, _amount, _raastId, block.timestamp);
     }
 
-    Withdrawal storage existing = pendingWithdrawals[msg.sender];
-    require(existing.amount == 0 || existing.isProcessed, "Previous request is in Pending!");
+    function confirmPayout(address _user) external onlyRelay nonReentrant {
+        Withdrawal storage request = pendingWithdrawals[_user];
+        require(request.amount > 0, "No pending request");
+        require(!request.isProcessed, "Already processed");
 
-    pendingWithdrawals[msg.sender] = Withdrawal(_amount, _raastId, false);
-    emit LockInitiated(msg.sender, _token, _amount, _raastId, block.timestamp);
-}
+        address token = request.token;
+        uint256 amount = request.amount;
 
-    function confirmPayout(address _user , address _token)external onlyRelay nonReentrant {
-        Withdrawal storage request=pendingWithdrawals[_user];
-        require(!request.isProcessed , "Already Processed!");
-        require(request.amount>0 ,"No Pending Request!");
-        if(_token== address(0)){
-            (bool success , )=owner.call{value:request.amount}("");
-        //transfer locked crypto to treasury Wallet 
-            require(success , "ETH Transaction Failed!");
-        }else{
-        //transfer locked crypto to treasury Wallet 
-            require(IERC20(_token).transfer(owner , request.amount),"Trasnfer to treasury Failed!");
-
+        if (token == address(0)) {
+            (bool success, ) = owner.call{value: amount}("");
+            require(success, "ETH Transfer Failed");
+        } else {
+            IERC20(token).safeTransfer(owner, amount);
         }
-        emit PayoutConfirmed(_user, _token, request.amount);
-        // request.isProcessed=true; This is unnecessary because we have to delete the rqst in the end hmm 
-        // delete the withdrawl request 
+
+        emit PayoutConfirmed(_user, token, amount);
         delete pendingWithdrawals[_user];
     }
 
+    function requestFund() external nonReentrant {
+        Withdrawal storage request = pendingWithdrawals[msg.sender];
+        require(request.amount > 0, "No pending request");
+        require(block.timestamp > request.timestamp + REFUND_TIMELOCK, "Refund timelock active");
 
-   // view fn for frontend maybe 
-   function getPendingWithdrawals(address _user)external view returns (uint256 amount , string memory raastId , bool isProcessed) {
-    Withdrawal storage request=pendingWithdrawals[_user];
-    return (request.amount , request.raastId , request.isProcessed);
-   } 
+        uint256 amount = request.amount;
+        address token = request.token;
+
+        if (token == address(0)) {
+            (bool success, ) = msg.sender.call{value: amount}("");
+            require(success, "ETH Refund Failed");
+        } else {
+            IERC20(token).safeTransfer(msg.sender, amount);
+        }
+
+        emit RefundClaim(msg.sender, token, amount);
+        delete pendingWithdrawals[msg.sender];
+    }
+
+    function getPendingWithdrawals(address _user) external view returns (uint256 amount, string memory raastId, bool isProcessed) {
+        Withdrawal storage request = pendingWithdrawals[_user];
+        return (request.amount, request.raastId, request.isProcessed);
+    }
+
+    receive() external payable {}
 }
