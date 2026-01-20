@@ -19,10 +19,8 @@ contract PakFlowVault is ReentrancyGuard {
         uint256 timestamp;
         bool isProcessed;
     }
-
     mapping(address => Withdrawal) public pendingWithdrawals;
     mapping(address => bool) public whiteListedTokens;
-
     event LockInitiated(address indexed user, address indexed token, uint256 amount, string raastId, uint256 timestamp);
     event PayoutConfirmed(address indexed user, address indexed token, uint256 amount);
     event RefundClaim(address indexed user, address indexed token, uint256 amount);
