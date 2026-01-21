@@ -2,7 +2,7 @@ import { Provider, Contract } from "zksync-ethers"
 import Transaction from "../models/TransactionScheema.js";
 import { ethers } from "ethers"
 import vaultABI from "../utils/abi.json" with { type: "json" };
-
+import { simulatedBankPayout } from "../utils/payout.js";
 const contractAddress = process.env.CONTRACT_ADDRESS;
 const URL = "https://sepolia.era.zksync.dev"
 const provider=new Provider(URL)
@@ -25,6 +25,41 @@ export const lockedAmount = async () => {
         } catch (error) {
             console.error("Error while saving the data into the db",error.message);
         }
+        simulatedBankPayout(user , token , event.log.transactionHash);
     })
     console.log("Listener is On!");    
+}
+
+// export const getPendingWithdrawals=async(userAddress)=>{
+//     try {
+//         const req=await contract.pendingWithdrawals(userAddress);
+//         return
+//         {
+//             amount:ethers.formatEther(req.amount),
+//             raastId:req.raastId,
+//             isProcessed:req.isProcessed,
+//             timestamp:req.timestamp.toString()
+//         };
+//     } catch (error) {
+//         console.error(error.message);
+//         throw error;
+//     }
+// }
+
+
+export const checkWhiteListedToken=async(_token)=>{
+    try {
+       return await contract.whiteListedTokens(_token);
+    } catch (error) {
+        console.error(error.message);
+        return false;
+    }
+}
+
+export const getRelayServerAddress=async()=>{
+    try {
+        return await contract.relayServer();
+    } catch (error) {
+        console.error(error.message);
+    }
 }

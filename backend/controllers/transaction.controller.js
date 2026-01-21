@@ -1,9 +1,5 @@
 import Transaction from "../models/TransactionScheema.js";
 
-
-
-
-
 export const getAllTransaction=async(req , res)=>{
     try {
         const txs=await Transaction.find().sort({createdAt:-1});
@@ -12,7 +8,6 @@ export const getAllTransaction=async(req , res)=>{
         res.status(500).json({"Error":error.message})
     }
 }
-
 export const getUserTransaction=async(req , res)=>{
     try {
         const {address}=req.params;

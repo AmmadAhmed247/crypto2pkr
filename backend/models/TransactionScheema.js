@@ -1,17 +1,18 @@
-import {mongoose,Schema} from "mongoose"
+import mongoose from "mongoose";
 
-
-const Transaction=new Schema({
-    userAddress:{type:String , required:true},
-    txHash:{type:String , required:true , unique:true },
-    raastId:{type:String , required:true},
-    lockedAmount:{type:String  ,required:true },
-    token:{type:String , required:true},
-    payoutStatus:{type:String ,enum: ["PENDING", "PROCESSING", "COMPLETED", "FAILED"], 
-        default: "PENDING"
+const transactionSchema = new mongoose.Schema({
+    userAddress: { type: String, required: true, index: true, lowercase: true },
+    raastId: { type: String, required: true },
+    lockedAmount: { type: String, required: true },
+    tokenSymbol: { type: String, default: "ETH" },
+    lockTxHash: { type: String, unique: true }, 
+    payoutTxHash: { type: String },           
+    status: { 
+        type: String, 
+        enum: ['LOCKED', 'PROCESSING', 'PAID', 'REFUNDED'], 
+        default: 'LOCKED' 
     },
-    createdAt:{type:Date , default:Date.now}
+    timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
 
-})
-
-export default mongoose.model("User",Transaction);
+export default mongoose.model("Transaction", transactionSchema);
