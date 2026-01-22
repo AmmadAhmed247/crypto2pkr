@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "@fontsource/inter/800.css"; 
+@import "@fontsource/roboto/700.css"; 
+@import "@fontsource/inter/900.css";
+
+
+body{
+    font-family: "Inter" , sans-serif;
+}
