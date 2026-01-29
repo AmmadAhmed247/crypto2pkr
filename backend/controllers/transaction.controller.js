@@ -12,7 +12,7 @@ export const getUserTransaction=async(req , res)=>{
     try {
         const {address}=req.params;
         console.log(address);
-        const txs=await Transaction.find({userAddress:address});
+        const txs=await Transaction.find({userAddress:address}).sort({createdAt:-1});
         res.status(200).json(txs);
     } catch (error) {
         res.status(500).json({"Error":error.message})

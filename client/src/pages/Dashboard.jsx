@@ -38,7 +38,7 @@ export default function CryptoBridgeLanding() {
   ];
 
   return (
-    <div className="min-h-screen bg-green-50 text-black">
+    <div className="min-h-screen w-full bg-green-50 text-black">
       <div className="container mx-auto px-6 py-20">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>

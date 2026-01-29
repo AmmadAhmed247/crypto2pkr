@@ -14,8 +14,6 @@ const contract = new Contract(contractAddress, vaultABI.abi, provider);
 
 export const startEventListeneres = async () => {
     console.log("Watcher Starting....");
-
-    // 1. Historical Sync Logic
     const syncMissingEvents = async () => {
         try {
             const currentBlock = await provider.getBlockNumber();
@@ -27,7 +25,6 @@ export const startEventListeneres = async () => {
             for (const event of lockEvents) {
                 const { user, token, amount, raastId } = event.args;
                 const txHash = event.transactionHash;
-                
                 const exists = await Transaction.findOne({ lockTxHash: txHash });
                 if (!exists) {
                     await Transaction.create({
@@ -45,13 +42,9 @@ export const startEventListeneres = async () => {
             console.error("Sync Error:", error.message);
         }
     };
-
     await syncMissingEvents();
-
-    // 2. Live Listener Setup
     const setupListeners = () => {
         contract.removeAllListeners();
-
         contract.on("LockInitiated", async (user, token, amount, raastId, timestamp, event) => {
             console.log(`NEW USER: ${user}`);
             try {
@@ -68,15 +61,12 @@ export const startEventListeneres = async () => {
                         status: "LOCKED"
                     });
                     console.log("Transaction Saved ~ ");
-                    
-                    // Pass raastId to payout function
                     simulatedBankPayout(user, token, txHash, raastId);
                 }
             } catch (error) {
                 console.error(`DB error: ${error.message}`);
             }
         });
-
         contract.on("PayoutConfirmed", async (user, token, amount, event) => {
             console.log(`Payout Confirmed: ${user}`);
             try {

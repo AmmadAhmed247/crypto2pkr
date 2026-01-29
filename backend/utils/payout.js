@@ -9,9 +9,7 @@ const wallet = new Wallet(adminWallet, provider);
 const contract = new Contract(process.env.CONTRACT_ADDRESS, vaultABI.abi, wallet);
 
 export const simulatedBankPayout = async (userAddress, tokenAddress, txHash, raastId) => {
-
     await new Promise(resolve => setTimeout(resolve, 10000));
-    
     try {
         console.log(`Checking pending withdrawal for user: ${userAddress}`);
         const withdrawal = await contract.getPendingWithdrawals(userAddress);
@@ -51,8 +49,6 @@ export const simulatedBankPayout = async (userAddress, tokenAddress, txHash, raa
     } catch (error) {
         console.error(`Payout failed for ${userAddress}:`, error.message);
         console.error("Full error:", error);
-        
-        // Update database with failed status
         try {
             await TransactionModel.findOneAndUpdate(
                 { lockTxHash: txHash },
