@@ -1,38 +1,65 @@
 import React, { useState } from 'react';
 import { Wallet, ArrowDown, CheckCircle, AlertCircle, Loader, ExternalLink, Info } from 'lucide-react';
+import { useExchangeRate } from '../hooks/exchangeRate';
+import { TokenETH, TokenUSDT, TokenBTC, TokenUSDC } from '@web3icons/react'
 
 export default function BridgeComponent() {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
   const [cryptoAmount, setCryptoAmount] = useState('');
   const [pkrAmount, setPkrAmount] = useState('0.00');
-  const [selectedCrypto, setSelectedCrypto] = useState('ETH');
+  const [selectedCrypto, setSelectedCrypto] = useState('BTC');
+  const [open , setOpen]=useState(false)
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState('');
   const [raastId, setRaastId] = useState('');
-  const [step, setStep] = useState(1); // 1: input, 2: confirm, 3: processing, 4: success
-
-  const exchangeRate = 285000; // 1 ETH = 285,000 PKR (example rate)
-  
+  const [step, setStep] = useState(1);
+  const { data: pkrRate } = useExchangeRate(selectedCrypto);
+  const exchangeRate = pkrRate || 0;
   const cryptoOptions = [
-    { symbol: 'ETH', name: 'Ethereum', icon: '⟠' },
-    { symbol: 'USDT', name: 'Tether', icon: '₮' },
-    { symbol: 'USDC', name: 'USD Coin', icon: '$' }
+    { symbol: 'BTC', name: 'Bitcoin' },
+    { symbol: 'ETH', name: 'Ethereum' },
+    { symbol: 'USDT', name: 'Tether' },
+    { symbol: 'USDC', name: 'USD Coin' }
   ];
+  const iconMap = {
+    BTC: <TokenBTC size={20} />,
+    ETH: <TokenETH size={20} />,
+    USDT: <TokenUSDT size={20} />,
+    USDC: <TokenUSDC size={20} />
+  };
+
 
   const connectWallet = async () => {
     setIsProcessing(true);
-    // Simulate wallet connection
-    setTimeout(() => {
-      setIsConnected(true);
-      setWalletAddress('0x742d...8f9a');
-      setIsProcessing(false);
-    }, 1500);
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts'
+        });
+        if (accounts.length > 0) {
+          const address = accounts[0];
+          setIsConnected(true);
+          setWalletAddress(`${address.slice(0, 6)}...${address.slice(-4)}`);
+        }
+        setIsProcessing(false);
+      } catch (error) {
+        console.error('Error connecting wallet:', error);
+        setIsProcessing(false);
+        alert('Failed to connect wallet. Please try again.');
+      }
+    } else {
+      setTimeout(() => {
+        setIsConnected(true);
+        setWalletAddress('0x742d...8f9a');
+        setIsProcessing(false);
+      }, 1500);
+    }
   };
 
   const handleAmountChange = (value) => {
     setCryptoAmount(value);
-    if (value && !isNaN(value)) {
+    if (value && !isNaN(value) && exchangeRate > 0) {
       const pkr = (parseFloat(value) * exchangeRate).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
@@ -44,7 +71,7 @@ export default function BridgeComponent() {
   };
 
   const handleBridge = async () => {
-    if (raastId.trim()) {
+    if (raastId.trim() && cryptoAmount && parseFloat(cryptoAmount) > 0) {
       setStep(2);
     }
   };
@@ -52,13 +79,11 @@ export default function BridgeComponent() {
   const confirmBridge = async () => {
     setStep(3);
     setIsProcessing(true);
-    
-    // Simulate transaction
     setTimeout(() => {
       setTxHash('0x8f9a...3b2c');
       setStep(4);
       setIsProcessing(false);
-    }, 3000);
+    }, 10000);
   };
 
   const resetBridge = () => {
@@ -127,31 +152,38 @@ export default function BridgeComponent() {
                 <div className="bg-zinc-50 rounded-xl p-4 border border-zinc-200">
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-zinc-600">From</label>
-                    <span className="text-xs text-zinc-500">Balance: 2.5 ETH</span>
+                    <span className="text-xs text-zinc-500">Balance: 2.5 {selectedCrypto}</span>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <select 
-                      value={selectedCrypto}
-                      onChange={(e) => setSelectedCrypto(e.target.value)}
-                      className="bg-white border border-zinc-200 rounded-lg px-3 py-2 font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-800"
+
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpen(!open)}
+                      className="flex items-center gap-2 bg-white border border-zinc-200 rounded-lg px-3 py-2"
                     >
-                      {cryptoOptions.map(crypto => (
-                        <option key={crypto.symbol} value={crypto.symbol}>
-                          {crypto.icon} {crypto.symbol}
-                        </option>
-                      ))}
-                    </select>
-                    
-                    <input
-                      type="number"
-                      value={cryptoAmount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      placeholder="0.0"
-                      className="flex-1 bg-transparent text-3xl font-bold text-zinc-800 focus:outline-none"
-                    />
+                      {iconMap[selectedCrypto]}
+                      <span>{selectedCrypto}</span>
+                    </button>
+
+                    {open && (
+                      <div className="absolute mt-2 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-10">
+                        {cryptoOptions.map((crypto) => (
+                          <div
+                            key={crypto.symbol}
+                            onClick={() => {
+                              setSelectedCrypto(crypto.symbol);
+                              setOpen(false);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-100 cursor-pointer"
+                          >
+                            {iconMap[crypto.symbol]}
+                            {crypto.symbol}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  
+
+
                   <div className="flex gap-2 mt-3">
                     {['0.1', '0.5', '1.0', 'Max'].map((preset) => (
                       <button
@@ -177,12 +209,12 @@ export default function BridgeComponent() {
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-zinc-600">To</label>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <div className="bg-white border border-zinc-200 rounded-lg px-3 py-2 font-medium text-zinc-800">
                       🇵🇰 PKR
                     </div>
-                    
+
                     <div className="flex-1 text-3xl font-bold text-zinc-800">
                       {pkrAmount}
                     </div>
@@ -193,7 +225,9 @@ export default function BridgeComponent() {
                 <div className="bg-green-100 border border-green-200 rounded-xl p-4 flex gap-3">
                   <Info className="w-5 h-5 text-zinc-700 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-zinc-700">
-                    <p className="font-medium mb-1">Exchange Rate: 1 {selectedCrypto} = {exchangeRate.toLocaleString()} PKR</p>
+                    <p className="font-medium mb-1">
+                      Exchange Rate: 1 {selectedCrypto} = {exchangeRate > 0 ? exchangeRate.toLocaleString() : 'Loading...'} PKR
+                    </p>
                     <p className="text-xs text-zinc-600">Fee: 0.1% • Estimated time: ~2 minutes</p>
                   </div>
                 </div>
@@ -214,7 +248,7 @@ export default function BridgeComponent() {
                 {/* Bridge Button */}
                 <button
                   onClick={handleBridge}
-                  disabled={!cryptoAmount || parseFloat(cryptoAmount) <= 0 || !raastId.trim()}
+                  disabled={!cryptoAmount || parseFloat(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate === 0}
                   className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-800"
                 >
                   Review Bridge
@@ -301,7 +335,7 @@ export default function BridgeComponent() {
                 </div>
                 <h3 className="text-2xl font-bold text-zinc-800 mb-3">Bridge Successful!</h3>
                 <p className="text-zinc-600 mb-6">Your PKR will be transferred shortly</p>
-                
+
                 <div className="bg-zinc-50 rounded-xl p-4 mb-6 text-left space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Amount Bridged</span>
@@ -334,8 +368,6 @@ export default function BridgeComponent() {
             )}
           </div>
         </div>
-
-        {/* Footer Info */}
         <div className="mt-6 text-center text-sm text-zinc-600">
           <p>Powered by zkSync Era • Secure Smart Contracts</p>
         </div>
