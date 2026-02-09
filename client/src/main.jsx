@@ -8,6 +8,8 @@ import Mainlayout from './layout/mainlayout.jsx'
 import About from './pages/About.jsx'
 import Launch from './pages/Launch.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import { WagmiProvider } from 'wagmi'
+import{config} from "./wagmi"
 const queryClient=new QueryClient()
 const router=createBrowserRouter([
   {
@@ -24,8 +26,10 @@ const router=createBrowserRouter([
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <WagmiProvider config={config} >
     <QueryClientProvider client={queryClient} >
       <RouterProvider router={router}  />
     </QueryClientProvider >
+    </WagmiProvider >
   </StrictMode>,
 )

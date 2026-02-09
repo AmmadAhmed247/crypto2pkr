@@ -1,376 +1,422 @@
-import React, { useState } from 'react';
-import { Wallet, ArrowDown, CheckCircle, AlertCircle, Loader, ExternalLink, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, ArrowDown, CheckCircle, Loader, Info, AlertCircle } from 'lucide-react';
 import { useExchangeRate } from '../hooks/exchangeRate';
-import { TokenETH, TokenUSDT, TokenBTC, TokenUSDC } from '@web3icons/react'
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { TokenETH, TokenUSDT, TokenBTC, TokenUSDC } from '@web3icons/react';
+import { 
+  fetchPendingStatus, 
+  lockUserFund, 
+  getTokenBalance, 
+  ensureZkSyncNetwork,
+  isMetaMaskInstalled 
+} from '../api/bridgeService.js';
 
 export default function BridgeComponent() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState('');
+  const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+  const queryClient = useQueryClient();
+
   const [cryptoAmount, setCryptoAmount] = useState('');
   const [pkrAmount, setPkrAmount] = useState('0.00');
-  const [selectedCrypto, setSelectedCrypto] = useState('BTC');
-  const [open , setOpen]=useState(false)
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [txHash, setTxHash] = useState('');
+  const [selectedCrypto, setSelectedCrypto] = useState('ETH');
   const [raastId, setRaastId] = useState('');
   const [step, setStep] = useState(1);
-  const { data: pkrRate } = useExchangeRate(selectedCrypto);
-  const exchangeRate = pkrRate || 0;
+  const [networkError, setNetworkError] = useState(false);
+  const [metaMaskMissing, setMetaMaskMissing] = useState(false);
+
+  const { data: exchangeRate = 0 } = useExchangeRate(selectedCrypto);
+
   const cryptoOptions = [
-    { symbol: 'BTC', name: 'Bitcoin' },
-    { symbol: 'ETH', name: 'Ethereum' },
-    { symbol: 'USDT', name: 'Tether' },
-    { symbol: 'USDC', name: 'USD Coin' }
+    { symbol: 'BTC', name: 'Bitcoin',  icon: <TokenBTC  size={20} />, address: '0x0000000000000000000000000000000000000000' },
+    { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH  size={20} />, address: '0x0000000000000000000000000000000000000000' },
+    { symbol: 'USDT', name: 'Tether',  icon: <TokenUSDT size={20} />, address: '0xYOUR_USDT_ADDRESS' },
+    { symbol: 'USDC', name: 'USD Coin', icon: <TokenUSDC size={20} />, address: '0xYOUR_USDC_ADDRESS' },
   ];
-  const iconMap = {
-    BTC: <TokenBTC size={20} />,
-    ETH: <TokenETH size={20} />,
-    USDT: <TokenUSDT size={20} />,
-    USDC: <TokenUSDC size={20} />
-  };
 
+  const selectedToken = cryptoOptions.find(t => t.symbol === selectedCrypto);
+  const tokenAddress = selectedToken?.address || '0x0000000000000000000000000000000000000000';
 
-  const connectWallet = async () => {
-    setIsProcessing(true);
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        const accounts = await window.ethereum.request({
-          method: 'eth_requestAccounts'
-        });
-        if (accounts.length > 0) {
-          const address = accounts[0];
-          setIsConnected(true);
-          setWalletAddress(`${address.slice(0, 6)}...${address.slice(-4)}`);
-        }
-        setIsProcessing(false);
-      } catch (error) {
-        console.error('Error connecting wallet:', error);
-        setIsProcessing(false);
-        alert('Failed to connect wallet. Please try again.');
-      }
-    } else {
-      setTimeout(() => {
-        setIsConnected(true);
-        setWalletAddress('0x742d...8f9a');
-        setIsProcessing(false);
-      }, 1500);
+  // Check MetaMask on mount
+  useEffect(() => {
+    setMetaMaskMissing(!isMetaMaskInstalled());
+  }, []);
+
+  // Check network on connect
+  useEffect(() => {
+    if (isConnected) {
+      ensureZkSyncNetwork()
+        .then(() => setNetworkError(false))
+        .catch(() => setNetworkError(true));
     }
-  };
+  }, [isConnected]);
+
+  // Fetch user's balance
+  const { data: balance = '0.000000', isLoading: isLoadingBalance } = useQuery({
+    queryKey: ['balance', address, selectedCrypto],
+    queryFn: () => getTokenBalance(tokenAddress, address),
+    enabled: !!address && isConnected && !networkError,
+    refetchInterval: 10000,
+  });
+
+  // Monitor pending withdrawals
+  const { data: pendingData } = useQuery({
+    queryKey: ['pendingwithdrawals', address],
+    queryFn: () => fetchPendingStatus(address),
+    enabled: !!address && isConnected && !networkError,
+    refetchInterval: 10000,
+  });
+
+  const { mutate: lockFunds, isPending: isLocking, error: lockError } = useMutation({
+    mutationFn: ({ tokenAddress, amount, raastId }) =>
+      lockUserFund({ tokenAddress, amount: amount.toString(), raastId }),
+    onSuccess: (tx) => {
+      console.log(`Lock transaction hash: ${tx.hash || tx.transactionHash}`);
+      queryClient.invalidateQueries({ queryKey: ['pendingwithdrawals', address] });
+      queryClient.invalidateQueries({ queryKey: ['balance', address, selectedCrypto] });
+      setStep(4);
+    },
+    onError: (err) => {
+      console.error('Lock failed:', err);
+      setStep(2);
+    },
+  });
 
   const handleAmountChange = (value) => {
     setCryptoAmount(value);
-    if (value && !isNaN(value) && exchangeRate > 0) {
-      const pkr = (parseFloat(value) * exchangeRate).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-      setPkrAmount(pkr);
-    } else {
+    if (!value || isNaN(value) || exchangeRate <= 0) {
       setPkrAmount('0.00');
+      return;
     }
+    const pkr = (parseFloat(value) * exchangeRate).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    setPkrAmount(pkr);
   };
 
-  const handleBridge = async () => {
-    if (raastId.trim() && cryptoAmount && parseFloat(cryptoAmount) > 0) {
-      setStep(2);
-    }
+  const handleReview = () => {
+    if (!cryptoAmount || Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0) return;
+    setStep(2);
   };
 
-  const confirmBridge = async () => {
+  const handleConfirm = () => {
+    if (!tokenAddress || !cryptoAmount || !raastId.trim()) return;
     setStep(3);
-    setIsProcessing(true);
-    setTimeout(() => {
-      setTxHash('0x8f9a...3b2c');
-      setStep(4);
-      setIsProcessing(false);
-    }, 10000);
+    lockFunds({ tokenAddress, amount: cryptoAmount, raastId });
   };
 
   const resetBridge = () => {
     setStep(1);
     setCryptoAmount('');
     setPkrAmount('0.00');
-    setTxHash('');
     setRaastId('');
   };
+
+  const connectWallet = () => {
+    const metaMaskConnector = connectors.find(
+      (connector) => connector.id === 'metaMask' || connector.name === 'MetaMask'
+    );
+    
+    if (metaMaskConnector) {
+      connect({ connector: metaMaskConnector });
+    } else if (connectors[0]) {
+      connect({ connector: connectors[0] });
+    }
+  };
+
+  if (metaMaskMissing) {
+    return (
+      <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg text-center py-12">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-red-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-zinc-800 mb-4">MetaMask Required</h1>
+          <p className="text-zinc-600 mb-8">
+            Please install MetaMask extension to use this bridge
+          </p>
+          <a
+            href="https://metamask.io/download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-orange-500 hover:bg-orange-600 text-white px-10 py-4 rounded-xl font-semibold"
+          >
+            Install MetaMask
+          </a>
+          <button
+            onClick={() => window.location.reload()}
+            className="block mx-auto mt-4 text-zinc-600 hover:text-zinc-800 text-sm"
+          >
+            Refresh after installing
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg text-center py-12">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Wallet className="w-10 h-10 text-zinc-800" />
+          </div>
+          <h1 className="text-3xl font-bold text-zinc-800 mb-4">Connect MetaMask</h1>
+          <p className="text-zinc-600 mb-8">Connect to start bridging to PKR</p>
+          <button
+            onClick={connectWallet}
+            className="bg-zinc-900 hover:bg-zinc-800 text-white px-10 py-4 rounded-xl font-semibold flex items-center gap-3 mx-auto"
+          >
+            <Wallet className="w-5 h-5" />
+            Connect MetaMask
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-zinc-800 mb-2">Bridge to PKR</h1>
-          <p className="text-zinc-600">Convert your crypto to Pakistani Rupees instantly</p>
+          <p className="text-zinc-600">Crypto → Pakistani Rupees • zkSync Era</p>
         </div>
 
-        {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-zinc-200 overflow-hidden">
-          {/* Network Info Bar */}
-          <div className={`bg-zinc-800 text-white px-6 py-3 flex items-center ${isConnected ? "justify-between" : "justify-center"}`}>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">zkSync Era</span>
+          <div className="bg-zinc-900 text-white px-6 py-3 flex justify-between text-sm font-medium">
+            <span>zkSync Sepolia</span>
+            <div className="font-mono flex items-center gap-2">
+              <Wallet className="w-4 h-4" />
+              {address?.slice(0,6)}...{address?.slice(-4)}
             </div>
-            {isConnected && (
-              <div className="flex items-center gap-2 text-sm">
-                <Wallet className="w-4 h-4" />
-                <span className="font-mono">{walletAddress}</span>
-              </div>
-            )}
           </div>
 
-          <div className="p-6">
-            {!isConnected ? (
-              /* Connect Wallet View */
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Wallet className="w-10 h-10 text-zinc-800" />
-                </div>
-                <h3 className="text-2xl font-bold text-zinc-800 mb-3">Connect Your Wallet</h3>
-                <p className="text-zinc-600 mb-8">Connect your wallet to start bridging crypto to PKR</p>
-                <button
-                  onClick={connectWallet}
-                  disabled={isProcessing}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-5 h-5" />
-                      Connect Wallet
-                    </>
-                  )}
-                </button>
+          {networkError && (
+            <div className="bg-red-50 border-b border-red-200 p-4 flex items-center gap-3 text-sm">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <div className="flex-1">
+                <p className="font-medium text-red-900">Wrong Network</p>
+                <p className="text-red-700">Please switch to zkSync Sepolia in MetaMask</p>
               </div>
-            ) : step === 1 ? (
-              /* Bridge Input View */
-              <div className="space-y-4">
-                {/* From Section */}
-                <div className="bg-zinc-50 rounded-xl p-4 border border-zinc-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-zinc-600">From</label>
-                    <span className="text-xs text-zinc-500">Balance: 2.5 {selectedCrypto}</span>
+              <button
+                onClick={() => ensureZkSyncNetwork().then(() => setNetworkError(false))}
+                className="text-red-700 underline text-sm"
+              >
+                Switch
+              </button>
+            </div>
+          )}
+
+          {pendingData && (
+            <div className="bg-yellow-50 border-b border-yellow-200 p-4 flex items-center gap-3 text-sm">
+              <Info className="w-5 h-5 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-900">Pending Transaction</p>
+                <p className="text-yellow-700">You have a pending withdrawal. Please wait.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="p-6">
+            {step === 1 && (
+              <div className="space-y-5">
+                <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+                  <div className="flex justify-between mb-3 text-sm">
+                    <label className="font-medium text-zinc-700">From</label>
+                    <span className="text-zinc-500">
+                      Balance: {isLoadingBalance ? '...' : balance} {selectedCrypto}
+                    </span>
                   </div>
-
-                  <div className="relative">
-                    <button
-                      onClick={() => setOpen(!open)}
-                      className="flex items-center gap-2 bg-white border border-zinc-200 rounded-lg px-3 py-2"
-                    >
-                      {iconMap[selectedCrypto]}
-                      <span>{selectedCrypto}</span>
-                    </button>
-
-                    {open && (
-                      <div className="absolute mt-2 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-10">
-                        {cryptoOptions.map((crypto) => (
-                          <div
-                            key={crypto.symbol}
-                            onClick={() => {
-                              setSelectedCrypto(crypto.symbol);
-                              setOpen(false);
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-100 cursor-pointer"
-                          >
-                            {iconMap[crypto.symbol]}
-                            {crypto.symbol}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 flex items-center gap-2 font-semibold">
+                      {selectedToken?.icon}
+                      {selectedCrypto}
+                    </div>
+                    <input
+                      type="number"
+                      value={cryptoAmount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      placeholder="0.0"
+                      className="flex-1 bg-transparent text-3xl font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                   </div>
-
-
-                  <div className="flex gap-2 mt-3">
-                    {['0.1', '0.5', '1.0', 'Max'].map((preset) => (
+                  <div className="flex gap-2 mt-4">
+                    {['0.001', '0.01', '0.1', 'Max'].map(v => (
                       <button
-                        key={preset}
-                        onClick={() => handleAmountChange(preset === 'Max' ? '2.5' : preset)}
-                        className="px-3 py-1 bg-white border border-zinc-200 rounded-md text-xs font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
+                        key={v}
+                        onClick={() => handleAmountChange(v === 'Max' ? balance : v)}
+                        className="px-3 py-1 text-xs border border-zinc-200 rounded hover:bg-zinc-100"
                       >
-                        {preset}
+                        {v}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Arrow */}
                 <div className="flex justify-center -my-2">
-                  <div className="bg-green-100 border-4 border-green-50 rounded-full p-2">
-                    <ArrowDown className="w-5 h-5 text-zinc-800" />
+                  <div className="bg-green-100 rounded-full p-3 border-4 border-white">
+                    <ArrowDown className="w-5 h-5 text-zinc-700" />
                   </div>
                 </div>
 
-                {/* To Section */}
-                <div className="bg-zinc-50 rounded-xl p-4 border border-zinc-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium text-zinc-600">To</label>
-                  </div>
-
+                <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+                  <label className="block text-sm font-medium text-zinc-700 mb-3">To</label>
                   <div className="flex items-center gap-3">
-                    <div className="bg-white border border-zinc-200 rounded-lg px-3 py-2 font-medium text-zinc-800">
+                    <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 font-semibold">
                       🇵🇰 PKR
                     </div>
+                    <div className="text-3xl font-bold text-zinc-900">{pkrAmount}</div>
+                  </div>
+                </div>
 
-                    <div className="flex-1 text-3xl font-bold text-zinc-800">
-                      {pkrAmount}
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm space-y-1">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-zinc-700 mt-0.5" />
+                    <div>
+                      <p>
+                        1 {selectedCrypto} ≈ {exchangeRate > 0 ? exchangeRate.toLocaleString() : '—'} PKR
+                      </p>
+                      <p className="text-xs text-zinc-600 mt-1">Fee 0.1% • ~2 min</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Info Box */}
-                <div className="bg-green-100 border border-green-200 rounded-xl p-4 flex gap-3">
-                  <Info className="w-5 h-5 text-zinc-700 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-zinc-700">
-                    <p className="font-medium mb-1">
-                      Exchange Rate: 1 {selectedCrypto} = {exchangeRate > 0 ? exchangeRate.toLocaleString() : 'Loading...'} PKR
-                    </p>
-                    <p className="text-xs text-zinc-600">Fee: 0.1% • Estimated time: ~2 minutes</p>
-                  </div>
-                </div>
-
-                {/* Raast ID Input */}
-                <div className="bg-zinc-50 rounded-xl p-4 border border-zinc-200">
-                  <label className="text-sm font-medium text-zinc-600 mb-3 block">Raast ID (Payout Destination)</label>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-zinc-700">
+                    Raast ID (Recipient)
+                  </label>
                   <input
                     type="text"
                     value={raastId}
-                    onChange={(e) => setRaastId(e.target.value)}
-                    placeholder="Enter your Raast ID"
-                    className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-3 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-800 font-mono"
+                    onChange={e => setRaastId(e.target.value.trim())}
+                    placeholder="Enter Raast ID"
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-zinc-400"
                   />
-                  <p className="text-xs text-zinc-500 mt-2">Your PKR will be sent to this Raast ID</p>
+                  <p className="text-xs text-zinc-500">PKR payout destination</p>
                 </div>
 
-                {/* Bridge Button */}
                 <button
-                  onClick={handleBridge}
-                  disabled={!cryptoAmount || parseFloat(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate === 0}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-800"
+                  onClick={handleReview}
+                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0 || isLocking || !!pendingData || networkError}
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Review Bridge
                 </button>
               </div>
-            ) : step === 2 ? (
-              /* Confirmation View */
+            )}
+
+            {step === 2 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold text-zinc-800 mb-2">Confirm Bridge</h3>
-                  <p className="text-zinc-600">Review your transaction details</p>
+                  <h2 className="text-2xl font-bold text-zinc-900">Confirm Bridge</h2>
+                  <p className="text-zinc-600 mt-1">Review details before proceeding</p>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="bg-zinc-50 rounded-xl p-4">
-                    <div className="text-sm text-zinc-600 mb-1">You send</div>
-                    <div className="text-2xl font-bold text-zinc-800">{cryptoAmount} {selectedCrypto}</div>
+                  <div className="bg-zinc-50 p-5 rounded-xl">
+                    <div className="text-sm text-zinc-600">You send</div>
+                    <div className="text-2xl font-bold mt-1">{cryptoAmount} {selectedCrypto}</div>
                   </div>
-
-                  <div className="flex justify-center">
-                    <ArrowDown className="w-5 h-5 text-zinc-400" />
+                  <div className="flex justify-center my-2">
+                    <ArrowDown className="w-6 h-6 text-zinc-400" />
                   </div>
-
-                  <div className="bg-zinc-50 rounded-xl p-4">
-                    <div className="text-sm text-zinc-600 mb-1">You receive</div>
-                    <div className="text-2xl font-bold text-zinc-800">{pkrAmount} PKR</div>
+                  <div className="bg-zinc-50 p-5 rounded-xl">
+                    <div className="text-sm text-zinc-600">You receive (estimated)</div>
+                    <div className="text-2xl font-bold mt-1">{pkrAmount} PKR</div>
                   </div>
                 </div>
 
-                <div className="bg-green-100 border border-green-200 rounded-xl p-4 space-y-2 text-sm">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-zinc-600">Exchange Rate</span>
-                    <span className="font-medium text-zinc-800">1 {selectedCrypto} = {exchangeRate.toLocaleString()} PKR</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Bridge Fee</span>
-                    <span className="font-medium text-zinc-800">0.1%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Network</span>
-                    <span className="font-medium text-zinc-800">zkSync Era</span>
+                    <span className="text-zinc-600">Rate</span>
+                    <span>1 {selectedCrypto} ≈ {exchangeRate.toLocaleString()} PKR</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Raast ID</span>
-                    <span className="font-medium text-zinc-800 font-mono text-xs">{raastId}</span>
+                    <span className="font-mono break-all">{raastId}</span>
                   </div>
                 </div>
+
+                {lockError && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-sm">
+                    {lockError.message || 'Failed to send transaction'}
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <button
                     onClick={() => setStep(1)}
-                    className="flex-1 bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-800 py-4 rounded-xl font-semibold transition-all"
+                    disabled={isLocking}
+                    className="flex-1 border border-zinc-300 py-4 rounded-xl font-medium hover:bg-zinc-50 disabled:opacity-50"
                   >
                     Back
                   </button>
                   <button
-                    onClick={confirmBridge}
-                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-semibold transition-all"
+                    onClick={handleConfirm}
+                    disabled={isLocking}
+                    className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Confirm Bridge
+                    {isLocking ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Confirm & Send'
+                    )}
                   </button>
                 </div>
               </div>
-            ) : step === 3 ? (
-              /* Processing View */
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Loader className="w-10 h-10 text-zinc-800 animate-spin" />
-                </div>
-                <h3 className="text-2xl font-bold text-zinc-800 mb-3">Processing Bridge</h3>
-                <p className="text-zinc-600 mb-6">Your transaction is being processed on zkSync...</p>
-                <div className="space-y-2 text-sm text-zinc-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>Sending to smart contract</span>
-                  </div>
-                </div>
+            )}
+
+            {step === 3 && (
+              <div className="text-center py-20">
+                <Loader className="w-16 h-16 text-zinc-800 animate-spin mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-zinc-900 mb-3">Bridging in Progress</h2>
+                <p className="text-zinc-600">Waiting for zkSync confirmation…</p>
               </div>
-            ) : (
-              /* Success View */
+            )}
+
+            {step === 4 && (
               <div className="text-center py-12">
-                <div className="w-20 h-20 bg-green-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-zinc-800 mb-3">Bridge Successful!</h3>
-                <p className="text-zinc-600 mb-6">Your PKR will be transferred shortly</p>
+                <h2 className="text-2xl font-bold text-zinc-900 mb-4">Bridge Completed!</h2>
+                <p className="text-zinc-600 mb-8">PKR should arrive via Raast shortly</p>
 
-                <div className="bg-zinc-50 rounded-xl p-4 mb-6 text-left space-y-2 text-sm">
+                <div className="bg-zinc-50 rounded-xl p-5 mb-8 text-sm space-y-3 text-left">
                   <div className="flex justify-between">
-                    <span className="text-zinc-600">Amount Bridged</span>
-                    <span className="font-medium text-zinc-800">{cryptoAmount} {selectedCrypto}</span>
+                    <span className="text-zinc-600">Sent</span>
+                    <span className="font-medium">{cryptoAmount} {selectedCrypto}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-600">PKR Received</span>
-                    <span className="font-medium text-zinc-800">{pkrAmount} PKR</span>
+                    <span className="text-zinc-600">Received (est.)</span>
+                    <span className="font-medium">{pkrAmount} PKR</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Raast ID</span>
-                    <span className="font-medium text-zinc-800 font-mono text-xs">{raastId}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-zinc-600">Transaction Hash</span>
-                    <a href="#" className="font-mono text-xs text-zinc-800 hover:text-zinc-600 flex items-center gap-1">
-                      {txHash}
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                    <span className="font-mono break-all">{raastId}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={resetBridge}
-                  className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-xl font-semibold transition-all"
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold"
                 >
-                  Bridge Again
+                  Start New Bridge
                 </button>
               </div>
             )}
           </div>
         </div>
-        <div className="mt-6 text-center text-sm text-zinc-600">
-          <p>Powered by zkSync Era • Secure Smart Contracts</p>
-        </div>
+
+        <p className="text-center text-sm text-zinc-500 mt-6">
+          Powered by zkSync Era • Secured by MetaMask
+        </p>
       </div>
     </div>
   );
