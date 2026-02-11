@@ -108,23 +108,48 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId }) => {
     throw error;
   }
 };
+export const refundUserFunds=async(address)=>{
+  if(!address) return null;
+  try {
+    await ensureZkSyncNetwork()
+    const contract=await getContract();
+    const tx=await contract.requestFund();
+    console.log(`Refund Transaction Hash:${tx.hash}`);
+    const recipt=await tx.wait();
+    console.log(`Refunded Successfully:${recipt.hash}`);
+    return recipt;
+    
+    
+  } catch (error) {
+    console.error(`Refund Claim failed.. ${error}`);
+    if(error.message?.includes("Refund timelock active")){
+      throw new Error(`Please wait ! time lock is still active..`);
+
+    }
+    if(error.message?.includes("No pending request")){
+      console.error(`No Refund request Available..`);
+      }
+
+    throw error;
+
+  }
+}
 
 export const fetchPendingStatus = async (address) => {
   if (!address) return null;
 
   try {
     const contract = await getReadOnlyContract();
-    const result = await contract.getPendingWithdrawals(address);
-    const [amount, raastId, isProcessed] = result;
-
-    if (amount.toString() === '0' || isProcessed) {
+    const result = await contract.pendingWithdrawals(address)
+    if (result.amount.toString() === '0' || result.isProcessed) {
       return null;
     }
 
     return {
-      amount: amount.toString(),
-      raastId: raastId.toString(),
-      isProcessed
+      amount: result.amount.toString(),
+      raastId: result.raastId,
+      isProcessed: result.isProcessed,
+      timestamp: Number(result.timestamp) 
     };
   } catch (error) {
     console.error("Failed to fetch pending status:", error);

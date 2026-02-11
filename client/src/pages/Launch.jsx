@@ -9,9 +9,10 @@ import {
   lockUserFund, 
   getTokenBalance, 
   ensureZkSyncNetwork,
-  isMetaMaskInstalled 
-} from '../api/bridgeService.js';
+  isMetaMaskInstalled ,
 
+} from '../api/bridgeService.js';
+import RefundSection from '../components/RefundSection.jsx';
 export default function BridgeComponent() {
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
@@ -25,6 +26,8 @@ export default function BridgeComponent() {
   const [step, setStep] = useState(1);
   const [networkError, setNetworkError] = useState(false);
   const [metaMaskMissing, setMetaMaskMissing] = useState(false);
+  const oneHour=3600;
+  
 
   const { data: exchangeRate = 0 } = useExchangeRate(selectedCrypto);
 
@@ -52,6 +55,8 @@ export default function BridgeComponent() {
     }
   }, [isConnected]);
 
+
+
   // Fetch user's balance
   const { data: balance = '0.000000', isLoading: isLoadingBalance } = useQuery({
     queryKey: ['balance', address, selectedCrypto],
@@ -67,6 +72,10 @@ export default function BridgeComponent() {
     enabled: !!address && isConnected && !networkError,
     refetchInterval: 10000,
   });
+  console.log(`Pending Requests...${pendingData}`)
+  // const{mutate:refundInitiated , isPending:isRefunding , error:refundsError}=useMutation({
+  //   mutationFn:()
+  // })
 
   const { mutate: lockFunds, isPending: isLocking, error: lockError } = useMutation({
     mutationFn: ({ tokenAddress, amount, raastId }) =>
@@ -193,6 +202,7 @@ export default function BridgeComponent() {
               {address?.slice(0,6)}...{address?.slice(-4)}
             </div>
           </div>
+          <RefundSection pendingTimeStamps={pendingData?.timestamp} />
 
           {networkError && (
             <div className="bg-red-50 border-b border-red-200 p-4 flex items-center gap-3 text-sm">

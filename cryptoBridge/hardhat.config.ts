@@ -1,7 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@matterlabs/hardhat-zksync-deploy";
 import "@matterlabs/hardhat-zksync-solc";
-import "@matterlabs/hardhat-zksync-verify"; // Optional: verification ke liye
+import "@matterlabs/hardhat-zksync-verify";
+
 
 const config: HardhatUserConfig = {
   zksolc: {

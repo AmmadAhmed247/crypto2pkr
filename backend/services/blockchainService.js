@@ -35,7 +35,7 @@ export const startEventListeneres = async () => {
                         tokenSymbol: token,
                         status: "LOCKED"
                     });
-                    console.log(`Missing LOCK ~ Found -- ${txHash}`);
+                    console.log(`Missing LOCK ~ Found : ${txHash}`);
                 }
             }
         } catch (error) {
