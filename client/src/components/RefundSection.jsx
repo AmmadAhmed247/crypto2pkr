@@ -10,7 +10,6 @@ const RefundSection = ({ pendingTimeStamps }) => {
     const now = Math.floor(Date.now() / 1000);
     const timeLeft = (Number(pendingTimeStamps) + oneHour) - now;
     const canRefund = timeLeft <= 0;
-
     const mutation = useMutation({
         mutationFn: () => refundUserFunds(address), 
         onSuccess: () => {

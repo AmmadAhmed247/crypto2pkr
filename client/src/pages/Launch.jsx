@@ -41,7 +41,6 @@ export default function BridgeComponent() {
   const selectedToken = cryptoOptions.find(t => t.symbol === selectedCrypto);
   const tokenAddress = selectedToken?.address || '0x0000000000000000000000000000000000000000';
 
-  // Check MetaMask on mount
   useEffect(() => {
     setMetaMaskMissing(!isMetaMaskInstalled());
   }, []);
