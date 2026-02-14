@@ -12,13 +12,15 @@ import {
   isMetaMaskInstalled ,
 
 } from '../api/bridgeService.js';
+import{usePrivy , useWallets} from "@privy-io/react-auth"
+
 import RefundSection from '../components/RefundSection.jsx';
 export default function BridgeComponent() {
-  const { isConnected, address } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
+  const{login  ,authenticated , user}=usePrivy()
+  const {wallets}=useWallets();
+  const address=user?.wallet?.address;
+  const isConnected=authenticated;
   const queryClient = useQueryClient();
-
   const [cryptoAmount, setCryptoAmount] = useState('');
   const [pkrAmount, setPkrAmount] = useState('0.00');
   const [selectedCrypto, setSelectedCrypto] = useState('ETH');
@@ -26,11 +28,7 @@ export default function BridgeComponent() {
   const [step, setStep] = useState(1);
   const [networkError, setNetworkError] = useState(false);
   const [metaMaskMissing, setMetaMaskMissing] = useState(false);
-  const oneHour=3600;
-  
-
   const { data: exchangeRate = 0 } = useExchangeRate(selectedCrypto);
-
   const cryptoOptions = [
     { symbol: 'BTC', name: 'Bitcoin',  icon: <TokenBTC  size={20} />, address: '0x0000000000000000000000000000000000000000' },
     { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH  size={20} />, address: '0x0000000000000000000000000000000000000000' },
@@ -47,12 +45,13 @@ export default function BridgeComponent() {
 
   // Check network on connect
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && wallets.length > 0) {
+    
       ensureZkSyncNetwork()
         .then(() => setNetworkError(false))
         .catch(() => setNetworkError(true));
     }
-  }, [isConnected]);
+  }, [isConnected, wallets]);
 
 
 

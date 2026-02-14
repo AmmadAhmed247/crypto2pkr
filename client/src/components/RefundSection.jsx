@@ -1,11 +1,11 @@
 import React from 'react'
 import { refundUserFunds } from '../api/bridgeService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAccount } from 'wagmi'
-
+import{usePrivy  , useWallets} from "@privy-io/react-auth"
 const RefundSection = ({ pendingTimeStamps }) => {
-    const { address } = useAccount(); 
-    const queryClient = useQueryClient();
+    const{authenticated , user}=usePrivy();
+    const{wallet}=useWallets();
+    const queryClient = useQueryClient()
     const oneHour = 3600;
     const now = Math.floor(Date.now() / 1000);
     const timeLeft = (Number(pendingTimeStamps) + oneHour) - now;
