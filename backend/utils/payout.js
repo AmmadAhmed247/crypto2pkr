@@ -30,8 +30,8 @@ export const simulatedBankPayout = async (userAddress, tokenAddress, txHash, raa
         
         console.log(`PKR sent via RAAST : Releasing Crypto to Treasury`);
         
-        // const tx = await contract.confirmPayout(userAddress);
-        // console.log(`Payout transaction sent: ${tx.hash}`);
+        const tx = await contract.confirmPayout(userAddress);
+        console.log(`Payout transaction sent: ${tx.hash}`);
         
         const receipt = await tx.wait();
         console.log(`Payout transaction confirmed: ${receipt.hash}`);

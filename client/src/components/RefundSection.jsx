@@ -5,6 +5,7 @@ import{usePrivy  , useWallets} from "@privy-io/react-auth"
 const RefundSection = ({ pendingTimeStamps }) => {
     const{authenticated , user}=usePrivy();
     const{wallet}=useWallets();
+    const address=user?.wallet?.address;
     const queryClient = useQueryClient()
     const oneHour = 3600;
     const now = Math.floor(Date.now() / 1000);

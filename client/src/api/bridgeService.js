@@ -13,58 +13,62 @@ const ZKSYNC_SEPOLIA = {
 };
 
 
-const getMetaMaskProvider = () => {
-  if (window.ethereum?.isMetaMask) {
-    return window.ethereum;
+const getPrivyProvider = async (wallets) => {
+  if (!wallets || wallets.length === 0) {
+    throw new Error("No wallet connected. Please connect your wallet.");
   }
-  
-  if (window.ethereum?.providers) {
-    const metamaskProvider = window.ethereum.providers.find(
-      (provider) => provider.isMetaMask
-    );
-    if (metamaskProvider) {
-      return metamaskProvider;
-    }
-  }
-  
-  throw new Error("MetaMask not detected. Please install MetaMask extension.");
+
+  const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy');
+  const activeWallet = embeddedWallet || wallets[0];
+
+  const provider = await activeWallet.getEthereumProvider();
+  return new BrowserProvider(provider);
 };
 
 
-const getProvider = async () => {
-  const ethereum = getMetaMaskProvider();
-  await ensureZkSyncNetwork();
-  const provider = new BrowserProvider(ethereum);
+export const switchToZkSyncSepolia = async (wallets) => {
+  if (!wallets || wallets.length === 0) {
+    throw new Error("No wallet connected");
+  }
+
+  const activeWallet = wallets[0];
+  
   try {
-    const network = await provider.getNetwork();
-    if (Number(network.chainId) !== ZKSYNC_SEPOLIA.chainId) {
-      throw new Error(`Wrong network: got ${network.chainId}, expected ${ZKSYNC_SEPOLIA.chainId}`);
-    }
-  } catch (err) {
-    console.error("Provider network check failed:", err);
-    throw new Error("Failed to verify zkSync Sepolia network");
+    await activeWallet.switchChain(ZKSYNC_SEPOLIA.chainId);
+    console.log("Switched to zkSync Sepolia");
+    return true;
+  } catch (error) {
+    console.error("Failed to switch network:", error);
+    throw new Error("Failed to switch to zkSync Sepolia. Please switch manually in your wallet.");
   }
-
-  return provider;
 };
 
-const getContract = async () => {
-  const provider = await getProvider();
-  const signer = await provider.getSigner();
 
+export const isOnZkSyncSepolia = (currentChainId) => {
+  return currentChainId === `eip155:${ZKSYNC_SEPOLIA.chainId}` || 
+         currentChainId === ZKSYNC_SEPOLIA.chainId ||
+         currentChainId === ZKSYNC_SEPOLIA.chainIdHex;
+};
+
+const getContract = async (wallets) => {
+  const provider = await getPrivyProvider(wallets);
+  const signer = await provider.getSigner();
   return new Contract(contractAddress, vaultAbi.abi, signer);
 };
 
-const getReadOnlyContract = async () => {
-  const provider = await getProvider();
+const getReadOnlyContract = async (wallets) => {
+  const provider = await getPrivyProvider(wallets);
   return new Contract(contractAddress, vaultAbi.abi, provider);
 };
 
-export const lockUserFund = async ({ tokenAddress, amount, raastId }) => {
-  try {
-    await ensureZkSyncNetwork();
-    const contract = await getContract();
 
+export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) => {
+  try {
+    if (!wallets || wallets.length === 0) {
+      throw new Error("No wallet connected");
+    }
+
+    const contract = await getContract(wallets);
     const parsedAmount = parseUnits(amount.toString(), 18);
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
 
@@ -85,8 +89,8 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId }) => {
     );
 
     console.log(" Transaction sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Transaction confirmed:", receipt.hash);
+    const receipt =await tx.wait();
+    console.log(" Transaction confirmed:", receipt.hash);
 
     return receipt;
   } catch (error) {
@@ -108,39 +112,43 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId }) => {
     throw error;
   }
 };
-export const refundUserFunds=async(address)=>{
-  if(!address) return null;
-  try {
-    await ensureZkSyncNetwork()
-    const contract=await getContract();
-    const tx=await contract.requestFund();
-    console.log(`Refund Transaction Hash:${tx.hash}`);
-    const recipt=await tx.wait();
-    console.log(`Refunded Successfully:${recipt.hash}`);
-    return recipt;
-    
-    
-  } catch (error) {
-    console.error(`Refund Claim failed.. ${error}`);
-    if(error.message?.includes("Refund timelock active")){
-      throw new Error(`Please wait ! time lock is still active..`);
 
-    }
-    if(error.message?.includes("No pending request")){
-      console.error(`No Refund request Available..`);
-      }
 
-    throw error;
-
+export const refundUserFunds = async (wallets) => {
+  if (!wallets || wallets.length === 0) {
+    throw new Error("No wallet connected");
   }
-}
 
-export const fetchPendingStatus = async (address) => {
+  try {
+    const contract = await getContract(wallets);
+    const tx = await contract.requestFund();
+    
+    console.log(` Refund transaction sent: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(` Refund successful: ${receipt.hash}`);
+    
+    return receipt;
+  } catch (error) {
+    console.error(`Refund failed:`, error);
+    
+    if (error.message?.includes("Refund timelock active")) {
+      throw new Error("Please wait! Timelock is still active.");
+    }
+    if (error.message?.includes("No pending request")) {
+      throw new Error("No pending request to refund");
+    }
+    
+    throw error;
+  }
+};
+
+export const fetchPendingStatus = async (address, wallets) => {
   if (!address) return null;
 
   try {
-    const contract = await getReadOnlyContract();
-    const result = await contract.pendingWithdrawals(address)
+    const contract = await getReadOnlyContract(wallets);
+    const result = await contract.pendingWithdrawals(address);
+    
     if (result.amount.toString() === '0' || result.isProcessed) {
       return null;
     }
@@ -149,7 +157,7 @@ export const fetchPendingStatus = async (address) => {
       amount: result.amount.toString(),
       raastId: result.raastId,
       isProcessed: result.isProcessed,
-      timestamp: Number(result.timestamp) 
+      timestamp: Number(result.timestamp)
     };
   } catch (error) {
     console.error("Failed to fetch pending status:", error);
@@ -157,60 +165,10 @@ export const fetchPendingStatus = async (address) => {
   }
 };
 
-export const ensureZkSyncNetwork = async () => {
-  const ethereum = getMetaMaskProvider();
 
-  let chainId;
+export const getTokenBalance = async (tokenAddress, userAddress, wallets) => {
   try {
-    chainId = await ethereum.request({ method: 'eth_chainId' });
-  } catch (err) {
-    throw new Error("Cannot read current chain");
-  }
-
-  if (chainId === ZKSYNC_SEPOLIA.chainIdHex) {
-    return true;
-  }
-
-  try {
-    await ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: ZKSYNC_SEPOLIA.chainIdHex }],
-    });
-    await new Promise(r => setTimeout(r, 1000));
-    return true;
-  } catch (switchError) {
-    if (switchError.code === 4902) {
-      try {
-        await ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: ZKSYNC_SEPOLIA.chainIdHex,
-            chainName: ZKSYNC_SEPOLIA.name,
-            nativeCurrency: {
-              name: 'Ether',
-              symbol: 'ETH',
-              decimals: 18
-            },
-            rpcUrls: [ZKSYNC_SEPOLIA.rpcUrl],
-            blockExplorerUrls: [ZKSYNC_SEPOLIA.explorer]
-          }]
-        });
-        await new Promise(r => setTimeout(r, 1500));
-        return true;
-      } catch (addError) {
-        console.error("Failed to add network:", addError);
-        throw new Error("Failed to add zkSync Sepolia to MetaMask");
-      }
-    }
-    console.error("Switch network failed:", switchError);
-    throw new Error("Please manually switch to zkSync Sepolia in MetaMask");
-  }
-};
-
-export const getTokenBalance = async (tokenAddress, userAddress) => {
-  try {
-    await ensureZkSyncNetwork();
-    const provider = await getProvider();
+    const provider = await getPrivyProvider(wallets);
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
 
     if (isEth) {
@@ -225,27 +183,5 @@ export const getTokenBalance = async (tokenAddress, userAddress) => {
   } catch (error) {
     console.error("Failed to fetch balance:", error);
     return "0.000000";
-  }
-};
-
-
-export const isMetaMaskInstalled = () => {
-  if (window.ethereum?.isMetaMask) return true;
-  if (window.ethereum?.providers) {
-    return window.ethereum.providers.some(p => p.isMetaMask);
-  }
-  return false;
-};
-
-export const connectMetaMask = async () => {
-  try {
-    const ethereum = getMetaMaskProvider();
-    const accounts = await ethereum.request({ 
-      method: 'eth_requestAccounts' 
-    });
-    return accounts[0];
-  } catch (error) {
-    console.error("Failed to connect MetaMask:", error);
-    throw new Error("Failed to connect to MetaMask");
   }
 };

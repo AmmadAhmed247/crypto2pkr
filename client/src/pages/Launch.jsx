@@ -1,85 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, ArrowDown, CheckCircle, Loader, Info, AlertCircle } from 'lucide-react';
 import { useExchangeRate } from '../hooks/exchangeRate';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TokenETH, TokenUSDT, TokenBTC, TokenUSDC } from '@web3icons/react';
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import RefundSection from '../components/RefundSection.jsx';
 import { 
   fetchPendingStatus, 
   lockUserFund, 
   getTokenBalance, 
-  ensureZkSyncNetwork,
-  isMetaMaskInstalled ,
-
+  switchToZkSyncSepolia,
+  isOnZkSyncSepolia,
+  refundUserFunds
 } from '../api/bridgeService.js';
-import{usePrivy , useWallets} from "@privy-io/react-auth"
 
-import RefundSection from '../components/RefundSection.jsx';
 export default function BridgeComponent() {
-  const{login  ,authenticated , user}=usePrivy()
-  const {wallets}=useWallets();
-  const address=user?.wallet?.address;
-  const isConnected=authenticated;
+  const { login, authenticated, user, logout } = usePrivy();
+  const { wallets } = useWallets();
   const queryClient = useQueryClient();
+
+  const activeWallet = wallets[0];
+  const currentChainId = activeWallet?.chainId;
+  const address = user?.wallet?.address;
+  const isConnected = authenticated && wallets.length > 0;
+
   const [cryptoAmount, setCryptoAmount] = useState('');
   const [pkrAmount, setPkrAmount] = useState('0.00');
   const [selectedCrypto, setSelectedCrypto] = useState('ETH');
   const [raastId, setRaastId] = useState('');
   const [step, setStep] = useState(1);
-  const [networkError, setNetworkError] = useState(false);
-  const [metaMaskMissing, setMetaMaskMissing] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+
   const { data: exchangeRate = 0 } = useExchangeRate(selectedCrypto);
+
   const cryptoOptions = [
-    { symbol: 'BTC', name: 'Bitcoin',  icon: <TokenBTC  size={20} />, address: '0x0000000000000000000000000000000000000000' },
-    { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH  size={20} />, address: '0x0000000000000000000000000000000000000000' },
-    { symbol: 'USDT', name: 'Tether',  icon: <TokenUSDT size={20} />, address: '0xYOUR_USDT_ADDRESS' },
+    { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH size={20} />, address: '0x0000000000000000000000000000000000000000' },
+    { symbol: 'USDT', name: 'Tether', icon: <TokenUSDT size={20} />, address: '0xYOUR_USDT_ADDRESS' },
     { symbol: 'USDC', name: 'USD Coin', icon: <TokenUSDC size={20} />, address: '0xYOUR_USDC_ADDRESS' },
   ];
 
   const selectedToken = cryptoOptions.find(t => t.symbol === selectedCrypto);
   const tokenAddress = selectedToken?.address || '0x0000000000000000000000000000000000000000';
 
-  useEffect(() => {
-    setMetaMaskMissing(!isMetaMaskInstalled());
-  }, []);
+  // Check if on correct network
+  const isCorrectNetwork = isOnZkSyncSepolia(currentChainId);
 
-  // Check network on connect
-  useEffect(() => {
-    if (isConnected && wallets.length > 0) {
-    
-      ensureZkSyncNetwork()
-        .then(() => setNetworkError(false))
-        .catch(() => setNetworkError(true));
-    }
-  }, [isConnected, wallets]);
-
-
-
-  // Fetch user's balance
+  // Fetch balance
   const { data: balance = '0.000000', isLoading: isLoadingBalance } = useQuery({
     queryKey: ['balance', address, selectedCrypto],
-    queryFn: () => getTokenBalance(tokenAddress, address),
-    enabled: !!address && isConnected && !networkError,
+    queryFn: () => getTokenBalance(tokenAddress, address, wallets),
+    enabled: !!address && isConnected && isCorrectNetwork,
     refetchInterval: 10000,
   });
 
-  // Monitor pending withdrawals
+  // Fetch pending withdrawals
   const { data: pendingData } = useQuery({
     queryKey: ['pendingwithdrawals', address],
-    queryFn: () => fetchPendingStatus(address),
-    enabled: !!address && isConnected && !networkError,
+    queryFn: () => fetchPendingStatus(address, wallets),
+    enabled: !!address && isConnected && isCorrectNetwork,
     refetchInterval: 10000,
   });
-  console.log(`Pending Requests...${pendingData}`)
-  // const{mutate:refundInitiated , isPending:isRefunding , error:refundsError}=useMutation({
-  //   mutationFn:()
-  // })
 
+  // Lock funds mutation
   const { mutate: lockFunds, isPending: isLocking, error: lockError } = useMutation({
     mutationFn: ({ tokenAddress, amount, raastId }) =>
-      lockUserFund({ tokenAddress, amount: amount.toString(), raastId }),
+      lockUserFund({ tokenAddress, amount, raastId, wallets }),
     onSuccess: (tx) => {
-      console.log(`Lock transaction hash: ${tx.hash || tx.transactionHash}`);
+      console.log(` Lock transaction: ${tx.hash}`);
       queryClient.invalidateQueries({ queryKey: ['pendingwithdrawals', address] });
       queryClient.invalidateQueries({ queryKey: ['balance', address, selectedCrypto] });
       setStep(4);
@@ -89,6 +76,21 @@ export default function BridgeComponent() {
       setStep(2);
     },
   });
+
+  // Handle network switch
+  const handleSwitchNetwork = async () => {
+    setIsSwitching(true);
+    try {
+      await switchToZkSyncSepolia(wallets);
+      // Wait a bit for the network to update
+      await new Promise(r => setTimeout(r, 1000));
+    } catch (error) {
+      console.error('Network switch failed:', error);
+      alert(error.message);
+    } finally {
+      setIsSwitching(false);
+    }
+  };
 
   const handleAmountChange = (value) => {
     setCryptoAmount(value);
@@ -121,48 +123,7 @@ export default function BridgeComponent() {
     setRaastId('');
   };
 
-  const connectWallet = () => {
-    const metaMaskConnector = connectors.find(
-      (connector) => connector.id === 'metaMask' || connector.name === 'MetaMask'
-    );
-    
-    if (metaMaskConnector) {
-      connect({ connector: metaMaskConnector });
-    } else if (connectors[0]) {
-      connect({ connector: connectors[0] });
-    }
-  };
-
-  if (metaMaskMissing) {
-    return (
-      <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-lg text-center py-12">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-10 h-10 text-red-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-zinc-800 mb-4">MetaMask Required</h1>
-          <p className="text-zinc-600 mb-8">
-            Please install MetaMask extension to use this bridge
-          </p>
-          <a
-            href="https://metamask.io/download/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-orange-500 hover:bg-orange-600 text-white px-10 py-4 rounded-xl font-semibold"
-          >
-            Install MetaMask
-          </a>
-          <button
-            onClick={() => window.location.reload()}
-            className="block mx-auto mt-4 text-zinc-600 hover:text-zinc-800 text-sm"
-          >
-            Refresh after installing
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // Not connected screen
   if (!isConnected) {
     return (
       <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
@@ -170,20 +131,74 @@ export default function BridgeComponent() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Wallet className="w-10 h-10 text-zinc-800" />
           </div>
-          <h1 className="text-3xl font-bold text-zinc-800 mb-4">Connect MetaMask</h1>
+          <h1 className="text-3xl font-bold text-zinc-800 mb-4">Connect Wallet</h1>
           <p className="text-zinc-600 mb-8">Connect to start bridging to PKR</p>
           <button
-            onClick={connectWallet}
+            onClick={login}
             className="bg-zinc-900 hover:bg-zinc-800 text-white px-10 py-4 rounded-xl font-semibold flex items-center gap-3 mx-auto"
           >
             <Wallet className="w-5 h-5" />
-            Connect MetaMask
+            Connect Wallet
           </button>
         </div>
       </div>
     );
   }
 
+  // Wrong network screen
+  if (!isCorrectNetwork) {
+    return (
+      <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg">
+          <div className="bg-white rounded-2xl shadow-xl border border-zinc-200 p-8">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-10 h-10 text-red-600" />
+            </div>
+            
+            <h1 className="text-3xl font-bold text-zinc-800 mb-4 text-center">Wrong Network</h1>
+            <p className="text-zinc-600 mb-2 text-center">
+              You're currently on: <span className="font-mono text-sm">{currentChainId || 'Unknown'}</span>
+            </p>
+            <p className="text-zinc-600 mb-8 text-center">
+              Please switch to <span className="font-semibold">zkSync Sepolia Testnet</span>
+            </p>
+
+            <div className="bg-zinc-50 rounded-xl p-4 mb-6">
+              <h3 className="font-semibold text-zinc-800 mb-2">zkSync Sepolia Details:</h3>
+              <div className="space-y-1 text-sm text-zinc-600">
+                <p>Chain ID: <span className="font-mono">300</span></p>
+                <p>RPC URL: <span className="font-mono text-xs">https://sepolia.era.zksync.dev</span></p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSwitchNetwork}
+              disabled={isSwitching}
+              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold mb-4 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSwitching ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Switching Network...
+                </>
+              ) : (
+                'Switch to zkSync Sepolia'
+              )}
+            </button>
+
+            <button
+              onClick={logout}
+              className="w-full text-zinc-600 hover:text-zinc-800 py-2 text-sm"
+            >
+              Disconnect Wallet
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main bridge interface
   return (
     <div className="min-h-screen bg-green-50 flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -200,23 +215,11 @@ export default function BridgeComponent() {
               {address?.slice(0,6)}...{address?.slice(-4)}
             </div>
           </div>
-          <RefundSection pendingTimeStamps={pendingData?.timestamp} />
 
-          {networkError && (
-            <div className="bg-red-50 border-b border-red-200 p-4 flex items-center gap-3 text-sm">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <div className="flex-1">
-                <p className="font-medium text-red-900">Wrong Network</p>
-                <p className="text-red-700">Please switch to zkSync Sepolia in MetaMask</p>
-              </div>
-              <button
-                onClick={() => ensureZkSyncNetwork().then(() => setNetworkError(false))}
-                className="text-red-700 underline text-sm"
-              >
-                Switch
-              </button>
-            </div>
-          )}
+          <RefundSection 
+            pendingTimeStamps={pendingData?.timestamp}
+            wallets={wallets}
+          />
 
           {pendingData && (
             <div className="bg-yellow-50 border-b border-yellow-200 p-4 flex items-center gap-3 text-sm">
@@ -287,7 +290,7 @@ export default function BridgeComponent() {
                       <p>
                         1 {selectedCrypto} ≈ {exchangeRate > 0 ? exchangeRate.toLocaleString() : '—'} PKR
                       </p>
-                      <p className="text-xs text-zinc-600 mt-1">Fee 0.1% • ~2 min</p>
+                      <p className="text-xs text-zinc-600 mt-1">~2 min processing</p>
                     </div>
                   </div>
                 </div>
@@ -308,7 +311,7 @@ export default function BridgeComponent() {
 
                 <button
                   onClick={handleReview}
-                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0 || isLocking || !!pendingData || networkError}
+                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0 || isLocking || !!pendingData}
                   className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Review Bridge
@@ -423,7 +426,7 @@ export default function BridgeComponent() {
         </div>
 
         <p className="text-center text-sm text-zinc-500 mt-6">
-          Powered by zkSync Era • Secured by MetaMask
+          Powered by zkSync Era • Secured by Privy
         </p>
       </div>
     </div>
