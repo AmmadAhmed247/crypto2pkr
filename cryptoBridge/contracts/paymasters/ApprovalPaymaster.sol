@@ -1,90 +1,33 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 import {IPaymaster, ExecutionResult, PAYMASTER_VALIDATION_SUCCESS_MAGIC} from "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IPaymaster.sol";
 import {IPaymasterFlow} from "@matterlabs/zksync-contracts/contracts/system-contracts/interfaces/IPaymasterFlow.sol";
 import "@matterlabs/zksync-contracts/contracts/system-contracts/libraries/TransactionHelper.sol";
+
 import "@matterlabs/zksync-contracts/contracts/system-contracts/Constants.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// Chainlink Oracle Interface
-interface IAggregatorV3 {
-    function latestRoundData()
-        external
-        view
-        returns (
-            uint80  roundId,
-            int256  price,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80  answeredInRound
-        );
-}
+/// @author Matter Labs
+/// @notice This smart contract pays the gas fees for accounts with balance of a specific ERC20 token. It makes use of the approval-based flow paymaster.
+contract ApprovalPaymaster is IPaymaster, Ownable {
+    uint256 constant PRICE_FOR_PAYING_FEES = 1;
 
-
-contract PakFlowOraclePaymaster is IPaymaster, Ownable {
-
-
-    /// Max age of Chainlink price before we consider it stale (10 minutes).
-    uint256 public constant ORACLE_STALENESS_LIMIT = 10 minutes;
-
-    address          public allowedToken; // USDT address
-    IAggregatorV3    public priceFeed;    // Chainlink ETH/USD feed
-    address          public treasury;     // Where collected USDT goes
-
-
-    event GasPaidInToken(address indexed user, uint256 ethAmount, uint256 tokenCharged);
-    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
-    event PriceFeedUpdated(address indexed oldFeed, address indexed newFeed);
-
+    address public allowedToken;
 
     modifier onlyBootloader() {
-        require(msg.sender == BOOTLOADER_FORMAL_ADDRESS, "Only bootloader");
+        require(
+            msg.sender == BOOTLOADER_FORMAL_ADDRESS,
+            "Only bootloader can call this method"
+        );
+        // Continue execution if called from the bootloader.
         _;
     }
 
-
-    constructor(
-        address _erc20,
-        address _priceFeed,
-        address _treasury,
-        address _initialOwner
-    ) Ownable(_initialOwner) {
-        require(_erc20     != address(0), "Invalid token");
-        require(_priceFeed != address(0), "Invalid price feed");
-        require(_treasury  != address(0), "Invalid treasury");
-
+    constructor(address _erc20, address initialOwner) Ownable(initialOwner) {
         allowedToken = _erc20;
-        priceFeed    = IAggregatorV3(_priceFeed);
-        treasury     = _treasury;
     }
-
-
-    function getRequiredTokenAmount(uint256 _requiredETH) public view returns (uint256) {
-        (
-            ,
-            int256  price,
-            ,
-            uint256 updatedAt,
-
-        ) = priceFeed.latestRoundData();
-
-
-        require(
-            block.timestamp - updatedAt <= ORACLE_STALENESS_LIMIT,
-            "Oracle price stale"
-        );
-
-        require(price > 0, "Invalid oracle price");
-
-        uint256 priceUsd = uint256(price);
-
-    
-        return (_requiredETH * priceUsd) / 1e20;
-    }
-
 
     function validateAndPayForPaymasterTransaction(
         bytes32,
@@ -96,88 +39,86 @@ contract PakFlowOraclePaymaster is IPaymaster, Ownable {
         onlyBootloader
         returns (bytes4 magic, bytes memory context)
     {
+        // By default we consider the transaction as accepted.
         magic = PAYMASTER_VALIDATION_SUCCESS_MAGIC;
+        require(
+            _transaction.paymasterInput.length >= 4,
+            "The standard paymaster input must be at least 4 bytes long"
+        );
 
-        require(_transaction.paymasterInput.length >= 4, "Input too short");
-
-        bytes4 paymasterInputSelector = bytes4(_transaction.paymasterInput[0:4]);
-
+        bytes4 paymasterInputSelector = bytes4(
+            _transaction.paymasterInput[0:4]
+        );
+        // Approval based flow
         if (paymasterInputSelector == IPaymasterFlow.approvalBased.selector) {
-
-        
-            (address token, uint256 minAllowance, ) = abi.decode(
+            // While the transaction data consists of address, uint256 and bytes data,
+            // the data is not needed for this paymaster
+            (address token, uint256 amount, bytes memory data) = abi.decode(
                 _transaction.paymasterInput[4:],
                 (address, uint256, bytes)
             );
 
+            // Verify if token is the correct one
             require(token == allowedToken, "Invalid token");
 
+            // We verify that the user has provided enough allowance
             address userAddress = address(uint160(_transaction.from));
 
-       
-            uint256 requiredETH = _transaction.gasLimit * _transaction.maxFeePerGas;
+            address thisAddress = address(this);
 
-            uint256 tokenAmountToCharge = getRequiredTokenAmount(requiredETH);
-
-            require(
-                tokenAmountToCharge <= minAllowance,
-                "Token charge exceeds user approval: price moved"
-            );
-
-        
-            uint256 userAllowance = IERC20(token).allowance(userAddress, address(this));
-            require(userAllowance >= tokenAmountToCharge, "Insufficient token allowance");
-
-            // 5. Pull USDT from user
-            bool transferred = IERC20(token).transferFrom(
+            uint256 providedAllowance = IERC20(token).allowance(
                 userAddress,
-                address(this),
-                tokenAmountToCharge
+                thisAddress
             );
-            require(transferred, "USDT transferFrom failed");
+            require(
+                providedAllowance >= PRICE_FOR_PAYING_FEES,
+                "Min allowance too low"
+            );
 
-            // 6. Pay bootloader in ETH
-            (bool success, ) = payable(BOOTLOADER_FORMAL_ADDRESS).call{value: requiredETH}("");
-            require(success, "ETH payment to bootloader failed");
+            // Note, that while the minimal amount of ETH needed is tx.gasPrice * tx.gasLimit,
+            // neither paymaster nor account are allowed to access this context variable.
+            uint256 requiredETH = _transaction.gasLimit *
+                _transaction.maxFeePerGas;
 
-            emit GasPaidInToken(userAddress, requiredETH, tokenAmountToCharge);
+            try
+                IERC20(token).transferFrom(userAddress, thisAddress, amount)
+            {} catch (bytes memory revertReason) {
+                // If the revert reason is empty or represented by just a function selector,
+                // we replace the error with a more user-friendly message
+                if (revertReason.length <= 4) {
+                    revert("Failed to transferFrom from users' account");
+                } else {
+                    assembly {
+                        revert(add(0x20, revertReason), mload(revertReason))
+                    }
+                }
+            }
 
+            // The bootloader never returns any data, so it can safely be ignored here.
+            (bool success, ) = payable(BOOTLOADER_FORMAL_ADDRESS).call{
+                value: requiredETH
+            }("");
+            require(
+                success,
+                "Failed to transfer tx fee to the bootloader. Paymaster balance might not be enough."
+            );
         } else {
-            revert("Only ApprovalBased flow supported");
+            revert("Unsupported paymaster flow");
         }
     }
 
     function postTransaction(
-        bytes calldata,
-        Transaction calldata,
+        bytes calldata _context,
+        Transaction calldata _transaction,
         bytes32,
         bytes32,
-        ExecutionResult,
-        uint256
+        ExecutionResult _txResult,
+        uint256 _maxRefundedGas
     ) external payable override onlyBootloader {}
 
-
-    function updateTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "Invalid treasury");
-        emit TreasuryUpdated(treasury, _treasury);
-        treasury = _treasury;
-    }
-
-    function updatePriceFeed(address _priceFeed) external onlyOwner {
-        require(_priceFeed != address(0), "Invalid feed");
-        emit PriceFeedUpdated(address(priceFeed), _priceFeed);
-        priceFeed = IAggregatorV3(_priceFeed);
-    }
-
-
-    function withdrawTokens(address _token) external onlyOwner {
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-        require(balance > 0, "Nothing to withdraw");
-        IERC20(_token).transfer(treasury, balance);
-    }
-
-    function withdrawETH() external onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+    function withdraw(address _to) external onlyOwner {
+        (bool success, ) = payable(_to).call{value: address(this).balance}("");
+        require(success, "Failed to withdraw funds from paymaster.");
     }
 
     receive() external payable {}
