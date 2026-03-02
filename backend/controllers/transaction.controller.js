@@ -1,4 +1,4 @@
-import Transaction from "../models/TransactionScheema.js";
+import Transaction from "../models/TransactionSchema.js";
 
 export const getAllTransaction=async(req , res)=>{
     try {
