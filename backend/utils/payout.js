@@ -22,7 +22,7 @@ export const simulatedBankPayout = async (userAddress, requestId, txHash) => {
             console.log(`Skipping: already processed or invalid | RequestID: ${requestId}`);
             return;
         }
-        const tx      = await contract.confirmPayout(userAddress, requestId);
+        const tx= await contract.confirmPayout(userAddress, requestId);
         console.log(`Relay Tx Sent: ${tx.hash}`);
 
         const receipt = await tx.wait();
