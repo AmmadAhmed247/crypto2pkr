@@ -11,7 +11,7 @@ import Contact from './pages/Contact.jsx'
 import About from './pages/About.jsx'
 import Launch from './pages/Launch.jsx'
 import Dashboard from './pages/Dashboard.jsx'
-
+import Profile from "./pages/profile.jsx"
 const queryClient = new QueryClient()
 
 const router = createBrowserRouter([
@@ -22,6 +22,7 @@ const router = createBrowserRouter([
       { path: "/contact", element: <Contact /> },
       { path: "/about", element: <About /> },
       { path: "/launch", element: <Launch /> },
+      { path: "/profile", element: <Profile /> },
     ]
   }
 ])
@@ -29,7 +30,7 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <PrivyProvider
-      appId="cmlma15oe00h10cjscjfdlgfw" 
+      appId={import.meta.env.VITE_PRIVY_APP_ID}
       config={{
         loginMethods: ['email', 'wallet', 'google'],
         appearance: {

@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, ArrowDown, CheckCircle, Loader, Info, AlertCircle } from 'lucide-react';
+import { Wallet, ArrowDown, CheckCircle, Loader, Info, AlertCircle, LogOut } from 'lucide-react';
 import { useExchangeRate } from '../hooks/exchangeRate';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TokenETH, TokenUSDT, TokenBTC, TokenUSDC } from '@web3icons/react';
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import RefundSection from '../components/RefundSection.jsx';
-import { 
-  fetchPendingStatus, 
-  lockUserFund, 
-  getTokenBalance, 
+import {
+  fetchPendingStatus,
+  lockUserFund,
+  getTokenBalance,
   switchToZkSyncSepolia,
   isOnZkSyncSepolia,
   refundUserFunds
 } from '../api/bridgeService.js';
 
 export default function BridgeComponent() {
-  const { login, authenticated, user, logout } = usePrivy();
+  const { login, authenticated, user, logout, ready, linkWallet } = usePrivy();
+  const address = user?.wallet?.address;
+  const isConnected = authenticated && !!address;
   const { wallets } = useWallets();
   const queryClient = useQueryClient();
-
   const activeWallet = wallets[0];
   const currentChainId = activeWallet?.chainId;
-  const address = user?.wallet?.address;
-  const isConnected = authenticated && wallets.length > 0;
-
+ 
   const [cryptoAmount, setCryptoAmount] = useState('');
   const [pkrAmount, setPkrAmount] = useState('0.00');
   const [selectedCrypto, setSelectedCrypto] = useState('ETH');
@@ -41,27 +40,22 @@ export default function BridgeComponent() {
 
   const selectedToken = cryptoOptions.find(t => t.symbol === selectedCrypto);
   const tokenAddress = selectedToken?.address || '0x0000000000000000000000000000000000000000';
-
-  // Check if on correct network
   const isCorrectNetwork = isOnZkSyncSepolia(currentChainId);
-
-  // Fetch balance
   const { data: balance = '0.000000', isLoading: isLoadingBalance } = useQuery({
     queryKey: ['balance', address, selectedCrypto],
     queryFn: () => getTokenBalance(tokenAddress, address, wallets),
     enabled: !!address && isConnected && isCorrectNetwork,
-    refetchInterval: 10000,
+    refetchInterval: 1000,
   });
 
-  // Fetch pending withdrawals
   const { data: pendingData } = useQuery({
     queryKey: ['pendingwithdrawals', address],
     queryFn: () => fetchPendingStatus(address, wallets),
     enabled: !!address && isConnected && isCorrectNetwork,
-    refetchInterval: 10000,
+    refetchInterval: 1000,
   });
 
-  // Lock funds mutation
+
   const { mutate: lockFunds, isPending: isLocking, error: lockError } = useMutation({
     mutationFn: ({ tokenAddress, amount, raastId }) =>
       lockUserFund({ tokenAddress, amount, raastId, wallets }),
@@ -76,13 +70,19 @@ export default function BridgeComponent() {
       setStep(2);
     },
   });
+  const handleConnect = () => {
+  if (authenticated) {
+    linkWallet();
+  } else {
+    login();
+  }
+};
 
-  // Handle network switch
+
   const handleSwitchNetwork = async () => {
     setIsSwitching(true);
     try {
       await switchToZkSyncSepolia(wallets);
-      // Wait a bit for the network to update
       await new Promise(r => setTimeout(r, 1000));
     } catch (error) {
       console.error('Network switch failed:', error);
@@ -122,6 +122,9 @@ export default function BridgeComponent() {
     setPkrAmount('0.00');
     setRaastId('');
   };
+  if (!ready) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader className="animate-spin" /></div>;
+  }
 
   // Not connected screen
   if (!isConnected) {
@@ -134,7 +137,7 @@ export default function BridgeComponent() {
           <h1 className="text-3xl font-bold text-zinc-800 mb-4">Connect Wallet</h1>
           <p className="text-zinc-600 mb-8">Connect to start bridging to PKR</p>
           <button
-            onClick={login}
+            onClick={handleConnect}
             className="bg-zinc-900 hover:bg-zinc-800 text-white px-10 py-4 rounded-xl font-semibold flex items-center gap-3 mx-auto"
           >
             <Wallet className="w-5 h-5" />
@@ -154,7 +157,7 @@ export default function BridgeComponent() {
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
-            
+
             <h1 className="text-3xl font-bold text-zinc-800 mb-4 text-center">Wrong Network</h1>
             <p className="text-zinc-600 mb-2 text-center">
               You're currently on: <span className="font-mono text-sm">{currentChainId || 'Unknown'}</span>
@@ -212,11 +215,11 @@ export default function BridgeComponent() {
             <span>zkSync Sepolia</span>
             <div className="font-mono flex items-center gap-2">
               <Wallet className="w-4 h-4" />
-              {address?.slice(0,6)}...{address?.slice(-4)}
+              {address?.slice(0, 6)}...{address?.slice(-4)}
             </div>
           </div>
 
-          <RefundSection 
+          <RefundSection
             pendingTimeStamps={pendingData?.timestamp}
             wallets={wallets}
           />

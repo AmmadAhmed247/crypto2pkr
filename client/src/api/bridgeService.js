@@ -30,9 +30,7 @@ export const switchToZkSyncSepolia = async (wallets) => {
   if (!wallets || wallets.length === 0) {
     throw new Error("No wallet connected");
   }
-
   const activeWallet = wallets[0];
-  
   try {
     await activeWallet.switchChain(ZKSYNC_SEPOLIA.chainId);
     console.log("Switched to zkSync Sepolia");
@@ -67,18 +65,16 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
     if (!wallets || wallets.length === 0) {
       throw new Error("No wallet connected");
     }
-
     const contract = await getContract(wallets);
-    const parsedAmount = parseUnits(amount.toString(), 18);
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
-
+    const decimal=isEth ? 18 : 6 ;
+    const parsedAmount = parseUnits(amount.toString(), decimal);
     console.log(" Locking funds:", {
       tokenAddress,
       raastId,
       amount: parsedAmount.toString(),
       isEth
     });
-
     const tx = await contract.lockUserRequest(
       tokenAddress,
       parsedAmount,
@@ -114,46 +110,21 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
 };
 
 
-export const refundUserFunds = async (wallets) => {
-  if (!wallets || wallets.length === 0) {
-    throw new Error("No wallet connected");
-  }
-
-  try {
-    const contract = await getContract(wallets);
-    const tx = await contract.requestFund();
-    
-    console.log(` Refund transaction sent: ${tx.hash}`);
-    const receipt = await tx.wait();
-    console.log(` Refund successful: ${receipt.hash}`);
-    
-    return receipt;
-  } catch (error) {
-    console.error(`Refund failed:`, error);
-    
-    if (error.message?.includes("Refund timelock active")) {
-      throw new Error("Please wait! Timelock is still active.");
-    }
-    if (error.message?.includes("No pending request")) {
-      throw new Error("No pending request to refund");
-    }
-    
-    throw error;
-  }
-};
-
 export const fetchPendingStatus = async (address, wallets) => {
   if (!address) return null;
 
   try {
     const contract = await getReadOnlyContract(wallets);
-    const result = await contract.pendingWithdrawals(address);
-    
-    if (result.amount.toString() === '0' || result.isProcessed) {
+    const counter = await contract.userRequestCounter(address);
+    if (counter === 0n) return null;
+    const latestId = counter - 1n;
+    const result = await contract.withdrawals(address, latestId);
+    if (result.amount === 0n || result.isProcessed) {
       return null;
     }
 
     return {
+      requestId: latestId.toString(), 
       amount: result.amount.toString(),
       raastId: result.raastId,
       isProcessed: result.isProcessed,
@@ -162,6 +133,33 @@ export const fetchPendingStatus = async (address, wallets) => {
   } catch (error) {
     console.error("Failed to fetch pending status:", error);
     return null;
+  }
+};
+
+
+export const refundUserFunds = async (wallets, requestId) => {
+  if (!wallets || wallets.length === 0) {
+    throw new Error("No wallet connected");
+  }
+
+  try {
+    const contract = await getContract(wallets);
+    const tx = await contract.requestRefund(requestId); 
+    console.log(`Refund transaction sent: ${tx.hash}`);
+    const receipt = await tx.wait();
+    console.log(`Refund successful: ${receipt.hash}`);
+    return receipt;
+  } catch (error) {
+    console.error(`Refund failed:`, error);
+
+    if (error.message?.includes("Refund timelock active")) {
+      throw new Error("Please wait! Timelock (24h) is still active.");
+    }
+    if (error.message?.includes("Not authorized")) {
+      throw new Error("You are not the owner of this request.");
+    }
+    
+    throw error;
   }
 };
 

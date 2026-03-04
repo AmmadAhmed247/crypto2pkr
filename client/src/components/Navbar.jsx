@@ -25,6 +25,7 @@ const Navbar = () => {
       <div className="hidden md:flex items-center gap-2 flex-row">
         <Link to={"/contact"} className='text-md text-black  px-2 py-2   rounded-2xl ' >Contact</Link>
         <Link to={"/about"} className='text-md text-black  px-2 py-2  rounded-2xl ' >About</Link>
+        <Link to={"/profile"} className='text-md   bg-green-700 text-white px-2 py-2   rounded-2xl ' >profile</Link>
         <Link to={"/launch"} className='text-md   bg-green-700 text-white px-2 py-2   rounded-2xl ' >LaunchApp</Link>
       </div>
       <MobileOptions onClose={() => setIsOpen(false)} open={isopen} />
