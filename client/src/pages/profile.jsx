@@ -2,6 +2,7 @@ import { useState } from "react";
 import SendModal from "../components/SendModal";
 import ReceiveModal from "../components/ReceiveModal";
 import { Menu ,LayoutDashboard ,BadgeCheck ,Sticker } from "lucide-react";
+import { useUser } from "../config/userContext";
 const Animations = () => (
   <style>{`
     .mono { font-family: 'Roboto Mono', 'Courier New', monospace !important; }
@@ -39,12 +40,12 @@ const STATS = [
 ];
 
 const NAV = [
-  { id:"overview",     icon:<LayoutDashboard size={17}/>, label:"Overview"     },
+  { id:"overview",     icon:<LayoutDashboard size={17}/>, label:"Overview"},
   { id:"transactions", icon:<Menu size={17}/>, label:"Transactions" },
-  { id:"claims",       icon:<BadgeCheck size={17}/>, label:"Claims"       },
+  { id:"claims",       icon:<BadgeCheck size={17}/>, label:"Claims"},
 ];
 
-const fmt   = (d) => new Date(d).toLocaleDateString("en-PK",{day:"numeric",month:"short",year:"numeric"});
+const fmt=(d)=> new Date(d).toLocaleDateString("en-PK",{day:"numeric" , month:"short" , year:"numeric"})
 const trunc = (a) => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 const PKR   = 279.3;
 
@@ -131,7 +132,9 @@ export default function Dashboard() {
   const [copied,     setCopied]     = useState(false);
   const [txFilter,   setTxFilter]   = useState("all");
   const [claimingId, setClaimingId] = useState(null);
-
+  const{address , isAuthenticated , email , balance}=useUser()
+  console.log(balance);
+  
   const user      = MOCK_USER;
   const claimable = TXS.filter(t => t.status === "claimable");
   const filtered  = txFilter === "all" ? TXS : TXS.filter(t => t.type === txFilter || t.status === txFilter);
@@ -143,10 +146,7 @@ export default function Dashboard() {
     <>
       <Animations/>
       <div className="flex min-h-screen bg-green-50/40">
-
         <aside className="w-60 shrink-0 bg-white rounded-md border-r border-green-100 flex flex-col p-5 gap-2 sticky top-0 h-screen overflow-y-auto">
-         
-
           <nav className="flex flex-col gap-1 flex-1">
             {NAV.map(n => (
               <button key={n.id} onClick={() => setTab(n.id)}
@@ -202,7 +202,6 @@ export default function Dashboard() {
           </div>
 
           <div className="px-8 pb-8 flex flex-col gap-5">
-
             {tab==="overview" && (
               <>
                 <div className="bg-gradient-to-br from-green-800 via-green-700 to-emerald-600 rounded-3xl p-7 text-white relative overflow-hidden shadow-xl shadow-green-200/60">
@@ -211,7 +210,7 @@ export default function Dashboard() {
                   <div className="relative z-10 flex flex-wrap justify-between items-start gap-6">
                     <div>
                       <p className="text-xs uppercase tracking-widest text-green-300 mb-2">zkSync Wallet</p>
-                      <p className="mono text-base font-medium tracking-wide">{trunc(user.wallet)}</p>
+                      <p className="mono text-base font-medium tracking-wide">{trunc(address)}</p>
                       <div className="flex gap-2 mt-4 flex-wrap">
                         <button onClick={copy} className="bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all active:scale-95">
                           {copied ? "✓ Copied" : "⎘ Copy"}
@@ -222,7 +221,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs uppercase tracking-widest text-green-300 mb-1">Total Balance</p>
-                      <p className="text-4xl font-extrabold">$2,325</p>
+                      <p className="text-4xl font-extrabold">{balance}</p>
                       <p className="text-xs text-green-300 mt-1">≈ PKR 6,48,675</p>
                     </div>
                   </div>
