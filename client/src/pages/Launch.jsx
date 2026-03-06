@@ -50,6 +50,8 @@ export default function BridgeComponent() {
     setStep(2);
   };
 
+  
+
   const handleConfirm = () => {
     if (!tokenAddress || !cryptoAmount || !raastId.trim()) return;
     setStep(3);
@@ -199,7 +201,7 @@ export default function BridgeComponent() {
 
                 <button
                   onClick={handleReview}
-                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0 || isLocking || !!pendingData}
+                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0  }
                   className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Review Bridge

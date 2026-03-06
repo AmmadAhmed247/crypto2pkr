@@ -7,7 +7,7 @@ const USD_TO_PKR = 280;
 export const useExchangeRate = (symbol) => {
   return useQuery({
     queryKey: ["price", symbol],
-    enabled: !!symbol, // prevents empty call
+    enabled: !!symbol, 
     queryFn: async () => {
       const { data } = await axios.get(
         `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}USDT`

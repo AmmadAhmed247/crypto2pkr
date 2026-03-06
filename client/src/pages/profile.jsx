@@ -3,6 +3,11 @@ import SendModal from "../components/SendModal";
 import ReceiveModal from "../components/ReceiveModal";
 import { Menu ,LayoutDashboard ,BadgeCheck ,Sticker } from "lucide-react";
 import { useUser } from "../config/userContext";
+import RecentActivity from "../components/RecentActivity";
+import { useQuery } from "@tanstack/react-query";
+import { useBridgeLogic } from "../hooks/bridgeLogic";
+import axios from "axios";
+import { useExchangeRate } from "../hooks/exchangeRate";
 const Animations = () => (
   <style>{`
     .mono { font-family: 'Roboto Mono', 'Courier New', monospace !important; }
@@ -33,7 +38,7 @@ const TXS = [
 ];
 
 const STATS = [
-  { label:"Total Sent",     value:"$1,950", pkr:"PKR 5,44,050", accent:"border-l-green-500"  },
+  { label:"Total BRidge",     value:"$1,950", pkr:"PKR 5,44,050", accent:"border-l-green-500"  },
   { label:"Total Received", value:"$180",   pkr:"PKR 50,220",   accent:"border-l-emerald-400"},
   { label:"Claimable",      value:"$395",   pkr:"PKR 1,10,205", accent:"border-l-teal-400"   },
   { label:"Fees Saved",     value:"$87",    pkr:"vs Pioneer",   accent:"border-l-cyan-400"   },
@@ -49,77 +54,10 @@ const fmt=(d)=> new Date(d).toLocaleDateString("en-PK",{day:"numeric" , month:"s
 const trunc = (a) => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 const PKR   = 279.3;
 
-function TypeBadge({ type }) {
-  const cfg = {
-    send:    "bg-green-50 text-green-700 border-green-200",
-    receive: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    claim:   "bg-teal-50 text-teal-700 border-teal-200",
-  };
-  const icons = { send:"↑", receive:"↓", claim:"◈" };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg[type]}`}>
-      {icons[type]} {type.charAt(0).toUpperCase()+type.slice(1)}
-    </span>
-  );
-}
 
-function StatusBadge({ status }) {
-  const cfg = {
-    confirmed: { wrap:"bg-green-50 text-green-700 border-green-200",  dot:"bg-green-500"  },
-    pending:   { wrap:"bg-yellow-50 text-yellow-700 border-yellow-200",dot:"bg-yellow-400" },
-    claimable: { wrap:"bg-teal-50 text-teal-700 border-teal-200",     dot:"bg-teal-500"   },
-    failed:    { wrap:"bg-red-50 text-red-700 border-red-200",        dot:"bg-red-500"    },
-  };
-  const s = cfg[status] || cfg.pending;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${s.wrap}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>
-      {status.charAt(0).toUpperCase()+status.slice(1)}
-    </span>
-  );
-}
 
-function TxTable({ rows, onClaim, claimingId, showHash }) {
-  if (!rows.length) return (
-    <div className="py-16 text-center text-green-300 text-sm">No transactions found.</div>
-  );
-  const heads = ["ID","Type","Amount","PKR Value","Raast ID","Status","Date", showHash && "Hash",""].filter(Boolean);
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-green-50 border-b border-green-100">
-            {heads.map(h => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-bold text-green-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((tx, i) => (
-            <tr key={tx.id} className={`border-b border-green-50 hover:bg-green-50/60 transition-colors ${i%2===0 ? "bg-white" : "bg-green-50/20"}`}>
-              <td className="px-4 py-3.5 mono text-xs text-gray-400">{tx.id}</td>
-              <td className="px-4 py-3.5"><TypeBadge type={tx.type}/></td>
-              <td className="px-4 py-3.5 font-bold text-green-900">${tx.amount} <span className="text-green-400 font-normal text-xs">{tx.token}</span></td>
-              <td className="px-4 py-3.5 text-emerald-600 text-xs font-medium">PKR {tx.pkr.toLocaleString()}</td>
-              <td className="px-4 py-3.5 mono text-xs text-gray-500">{tx.raast}</td>
-              <td className="px-4 py-3.5"><StatusBadge status={tx.status}/></td>
-              <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">{fmt(tx.date)}</td>
-              {showHash && <td className="px-4 py-3.5 mono text-xs text-gray-300">{tx.hash}</td>}
-              <td className="px-4 py-3.5">
-                {tx.status === "claimable"
-                  ? <button onClick={() => onClaim(tx.id)} className="bg-green-600 hover:bg-green-700 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
-                      {claimingId === tx.id ? <span className="shimmer-bar inline-block w-10 h-3 rounded"/> : "Claim"}
-                    </button>
-                  : <span className="text-gray-300">—</span>
-                }
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+
+
 
 
 
@@ -133,8 +71,23 @@ export default function Dashboard() {
   const [txFilter,   setTxFilter]   = useState("all");
   const [claimingId, setClaimingId] = useState(null);
   const{address , isAuthenticated , email , balance}=useUser()
-  console.log(balance);
+  const { data: exchangeRate = 0 } = useExchangeRate("ETH");
+  const amount=exchangeRate*balance;
+  console.log(`amount:${amount}`);
   
+  const formatted=amount.toLocaleString("en-US",{
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  })
+  
+  
+  
+  
+  console.log('Balance:',balance);
+  
+  
+
+    
   const user      = MOCK_USER;
   const claimable = TXS.filter(t => t.status === "claimable");
   const filtered  = txFilter === "all" ? TXS : TXS.filter(t => t.type === txFilter || t.status === txFilter);
@@ -222,7 +175,7 @@ export default function Dashboard() {
                     <div className="text-right">
                       <p className="text-xs uppercase tracking-widest text-green-300 mb-1">Total Balance</p>
                       <p className="text-4xl font-extrabold">{balance}</p>
-                      <p className="text-xs text-green-300 mt-1">≈ PKR 6,48,675</p>
+                      <p className="text-lg text-green-300 mt-1">{formatted} <span className="text-white" >PKR</span> </p>
                     </div>
                   </div>
                 </div>
@@ -255,7 +208,7 @@ export default function Dashboard() {
                     <p className="text-sm font-bold text-green-900">Recent Activity</p>
                     <button onClick={() => setTab("transactions")} className="text-xs text-green-500 hover:text-green-700 font-semibold transition-colors">See all →</button>
                   </div>
-                  <TxTable rows={TXS.slice(0,4)} onClaim={claim} claimingId={claimingId}/>
+                  <RecentActivity rows={TXS.slice(0,4)} onClaim={claim} claimingId={claimingId} address={address} />
                 </div>
               </>
             )}
@@ -270,7 +223,7 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
-                <TxTable rows={filtered} onClaim={claim} claimingId={claimingId} showHash/>
+                <RecentActivity address={address} rows={filtered} onClaim={claim} claimingId={claimingId} showHash/>
               </div>
             )}
 
