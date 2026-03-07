@@ -10,7 +10,13 @@ export const UserProvider = ({ children }) => {
     const { wallets } = useWallets();
     const [balance, setBalance] = useState("0.000000");
     const wallet = wallets.length > 0 ? wallets[0] : null;
-    const address = user?.wallet?.address;
+    const smartAddress = user?.smartWallet?.address;
+    const embeddedAddress = user?.wallet?.address;
+    const address = smartAddress || embeddedAddress;
+
+    console.log(address);
+    
+ 
 
     const fetchBalance = async () => {
         if (!wallet || !address) return;

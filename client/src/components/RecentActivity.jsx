@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import React from 'react'
-
+import axios from "axios"
 function TypeBadge({ type }) {
   const cfg = {
     send:    "bg-green-50 text-green-700 border-green-200",
@@ -36,7 +36,7 @@ function StatusBadge({ status }) {
 const trunc = (a) => a ? `${a.slice(0,6)}…${a.slice(-4)}` : "—";
 
 
-const RecentActivity=({ rows, onClaim, claimingId, showHash , address })=> {
+const RecentActivity=({  address , txFilter })=> {
 const { data: userTransactions, isLoading } = useQuery({
     queryKey: ["transactionData", address],
     queryFn: async () => {
@@ -48,20 +48,32 @@ const { data: userTransactions, isLoading } = useQuery({
     staleTime: 0,
     refetchInterval: 5000,
 });
+const allTxs = userTransactions?.transactions ?? [];
+const filtered = allTxs.filter(tx => {
+        if (!txFilter || txFilter === "all") return true;
+        if (txFilter === "send")      return tx.type === "SENT";
+        if (txFilter === "receive")   return tx.type === "DEPOSIT";
+        if (txFilter === "claim")     return tx.type === "BRIDGE";
+        if (txFilter === "confirmed") return tx.status === "PAID";
+        if (txFilter === "pending")   return tx.status === "LOCKED";
+        if (txFilter === "claimable") return tx.status === "REFUNDED";
+        return true;
+    });
+
+    console.log(filtered);
+    
+
 
 console.log('Backend Response:', userTransactions);
 console.log('PKR:', userTransactions?.totalPkr); 
 console.log('USD:', userTransactions?.totalUsd);
   
 const fmt=(d)=> new Date(d).toLocaleDateString("en-US",{day:"numeric",year:"numeric",month:"short"})
-  if (!rows.length) return (
-    <div className="py-16 text-center text-green-300 text-sm">No transactions found.</div>
-  );
+  
   const heads = ["Address","Amount","PKR Value","Raast ID","Status","Type","Lock TxHash","Payout TxHash" , "Date"].filter(Boolean);
   if (isLoading) return <div className="py-16 text-center text-green-300">Fetching history...</div>;
-  if (!userTransactions || userTransactions.length === 0) {
-    return <div className="py-16 text-center text-green-300 text-sm">No transactions found.</div>;
-  }
+  if (!filtered.length) return <div className="py-16 text-center text-green-300 text-sm">No transactions found.</div>;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -73,7 +85,7 @@ const fmt=(d)=> new Date(d).toLocaleDateString("en-US",{day:"numeric",year:"nume
           </tr>
         </thead>
         <tbody>
-          {userTransactions.transactions.map((tx, i) => (
+          {filtered?.map((tx, i) => (
             <tr key={tx.id} className={`border-b border-green-50 hover:bg-green-50/60 transition-colors ${i%2===0 ? "bg-white" : "bg-green-50/20"}`}>
               <td className="px-4 py-3.5 mono text-xs text-gray-400">{trunc(tx.userAddress)}</td>
               <td className="px-4 py-3.5 font-bold text-green-900">{tx.lockedAmount} <span className={` text-xs  ${tx.tokenSymbol=="ETH" ? "text-blue-600 bg-blue-50 py-1 px-0.5 rounded-md":"text-green-500"}`} >{tx.tokenSymbol}</span> </td>

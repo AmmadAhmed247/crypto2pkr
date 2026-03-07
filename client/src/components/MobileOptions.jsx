@@ -1,7 +1,17 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import {Home , PhoneCallIcon ,UserRound   } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom";
+import {Home , PhoneCallIcon ,UserRound , UserIcon, LogOut  ,BringToFront } from "lucide-react"
+import {useUser} from "../config/userContext.jsx"
 const MobileOptions = ({ open, onClose }) => {
+
+  const {address , logout , isAuthenticated}=useUser();
+  const navigate=useNavigate();
+  const handleDisconnect=async()=>{
+    logout();
+    navigate("/");
+  }
+
+
   return (
     <div className="fixed inset-0 md:hidden z-50 pointer-events-none">
       <div
@@ -37,9 +47,29 @@ const MobileOptions = ({ open, onClose }) => {
           </Link>
           
           </div>
-          <Link to={"/launchapp"} className="cursor-pointer rounded-xl text-center bg-green-800 text-white font-[Inter] px-2 py-1 hover:text-purple-50 transition-colors " onClick={onClose}>
+         {isAuthenticated ? (
+          <>
+            <Link to={"/launch"} className='flex items-center gap-2 bg-green-300 border border-green-200 text-zinc-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-50 transition-all'>
+              <BringToFront size={16} />
+              Bridge
+            </Link>
+            <Link to={"/profile"} className='flex items-center gap-2 bg-white border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-50 transition-all'>
+              <UserIcon size={16} />
+              Dashboard
+            </Link>
+            <button 
+              onClick={handleDisconnect}
+              className='flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition-all active:scale-95'
+            >
+              <LogOut size={16} />
+              Disconnect
+            </button>
+          </>
+        ) : (
+          <Link to={"/launch"} className='bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-green-200 hover:bg-green-800 transition-all active:scale-95'>
             Launch App
           </Link>
+        )}
         </div>
         <div className="flex items-center justify-center">
         <span className="absolute bottom-1 border-zinc-400 text-xs " >© 2026 Rupia All Rights Reserved.</span>
