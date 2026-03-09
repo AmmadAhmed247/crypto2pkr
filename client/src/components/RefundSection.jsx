@@ -12,11 +12,11 @@ const RefundSection = ({ pendingTimeStamps }) => {
     const timeLeft = (Number(pendingTimeStamps) + oneHour) - now;
     const canRefund = timeLeft <= 0;
     const mutation = useMutation({
-        mutationFn: () => refundUserFunds(address), 
+        mutationFn: () => refundUserFunds(address , requestId), 
         onSuccess: () => {
             alert(`Refund Successfully...`);
+            queryClient.invalidateQueries({ queryKey: ['claimableBalance', address] }); 
             queryClient.invalidateQueries({ queryKey: ['pendingwithdrawals', address] }); 
-            queryClient.invalidateQueries({ queryKey: ['balance', address] }); 
         },
         onError: (error) => {
             alert(`Error while refunding... ${error.message}`)

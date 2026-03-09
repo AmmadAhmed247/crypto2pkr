@@ -137,28 +137,75 @@ export const fetchPendingStatus = async (address, wallets) => {
 };
 
 
-export const refundUserFunds = async (wallets, requestId) => {
-  if (!wallets || wallets.length === 0) {
-    throw new Error("No wallet connected");
+
+export const fetchAllWithdrawals = async (address, wallets) => {
+  if (!address) return [];
+
+  try {
+    const contract = await getReadOnlyContract(wallets);
+    const counter  = await contract.userRequestCounter(address);
+    if (counter === 0n) return [];
+
+    const now      = Math.floor(Date.now() / 1000);
+    const TIMELOCK = 24 * 60 * 60;
+
+
+    const ids = Array.from({ length: Number(counter) }, (_, i) => BigInt(i));
+
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        const w = await contract.withdrawals(address, id);
+
+        // Skip: already claimed (isProcessed) or deleted (amount === 0 after delete)
+        if (w.amount === 0n || w.isProcessed) return null;
+
+        const unlocksAt   = Number(w.timestamp) + TIMELOCK;
+        const isClaimable = now > unlocksAt;
+
+        return {
+          requestId:   id.toString(),
+          amount:      w.amount,        // BigInt — use formatEther() to display
+          token:       w.token,
+          raastId:     w.raastId,
+          timestamp:   Number(w.timestamp),
+          unlocksAt,
+          isClaimable,
+          secondsLeft: isClaimable ? 0 : unlocksAt - now,
+        };
+      })
+    );
+
+    return results.filter(Boolean);
+  } catch (error) {
+    console.error("Failed to fetch withdrawals:", error);
+    return [];
   }
+};
+
+
+export const refundUserFunds = async (wallets, requestId) => {
+  if (!wallets?.length) throw new Error("No wallet connected");
 
   try {
     const contract = await getContract(wallets);
-    const tx = await contract.requestRefund(requestId); 
-    console.log(`Refund transaction sent: ${tx.hash}`);
-    const receipt = await tx.wait();
-    console.log(`Refund successful: ${receipt.hash}`);
+    const tx       = await contract.claimRefund(requestId);
+    console.log(`Refund tx sent: ${tx.hash}`);
+    const receipt  = await tx.wait();
+    console.log(`Refund confirmed: ${receipt.hash}`);
     return receipt;
   } catch (error) {
-    console.error(`Refund failed:`, error);
+    console.error("Refund failed:", error);
 
-    if (error.message?.includes("Refund timelock active")) {
-      throw new Error("Please wait! Timelock (24h) is still active.");
+    if (error.code === 4001 || error.code === "ACTION_REJECTED") {
+      throw new Error("Transaction rejected by user.");
     }
-    if (error.message?.includes("Not authorized")) {
-      throw new Error("You are not the owner of this request.");
+    if (error.message?.includes("TimeLock Active")) {
+      throw new Error("Please wait — the 24h timelock is still active.");
     }
-    
+    if (error.message?.includes("Invalid Request")) {
+      throw new Error("This request doesn't exist or was already claimed.");
+    }
+
     throw error;
   }
 };

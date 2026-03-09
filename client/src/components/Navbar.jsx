@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Menu, LogOut, User as UserIcon } from "lucide-react"
+import { Link, useNavigate   } from 'react-router-dom'
+import { Menu, LogOut, User as UserIcon , BringToFront } from "lucide-react"
 import MobileOptions from './MobileOptions.jsx'
 import { useUser } from "../config/userContext" 
 
@@ -31,6 +31,10 @@ const Navbar = () => {
         
         {isAuthenticated ? (
           <>
+          <Link to={"/launch"} className='flex items-center gap-2 bg-green-300 border border-green-200 text-zinc-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-200 transition-all'>
+              <BringToFront size={16} />
+              Bridge
+            </Link>
             <Link to={"/profile"} className='flex items-center gap-2 bg-white border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-50 transition-all'>
               <UserIcon size={16} />
               Dashboard

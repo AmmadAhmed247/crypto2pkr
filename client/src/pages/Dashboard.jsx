@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect , use } from 'react';
 import { ArrowRight, Shield, Zap, Clock, CheckCircle, Github, Twitter } from 'lucide-react';
 
 export default function CryptoBridgeLanding() {
   const [isVisible, setIsVisible] = useState(false);
   const [rotation, setRotation] = useState(0);
+  
 
   useEffect(() => {
     setIsVisible(true);
