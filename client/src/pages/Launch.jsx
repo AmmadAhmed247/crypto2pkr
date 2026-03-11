@@ -6,7 +6,7 @@ import { TokenETH, TokenUSDT, TokenUSDC } from '@web3icons/react';
 import RefundSection from '../components/RefundSection.jsx';
 import { fetchPendingStatus, getTokenBalance, switchToZkSyncSepolia, isOnZkSyncSepolia } from '../api/bridgeService.js';
 import { useBridgeLogic } from '../hooks/bridgeLogic.js';
-import { useUser } from '../config/userContext.jsx';
+import { useUser } from '../context/userContext.jsx';
 
 const cryptoOptions = [
   { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH size={20} />, address: '0x0000000000000000000000000000000000000000' },

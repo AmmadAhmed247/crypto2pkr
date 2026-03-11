@@ -15,14 +15,14 @@ const ZKSYNC_SEPOLIA = {
 
 const getPrivyProvider = async (wallets) => {
   if (!wallets || wallets.length === 0) {
-    throw new Error("No wallet connected. Please connect your wallet.");
+    throw new Error("No wallet connected.");
   }
-
-  const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy');
-  const activeWallet = embeddedWallet || wallets[0];
-
+  const activeWallet = wallets.find((w) => w.walletClientType === 'metamask') 
+    || wallets[0];
+  console.log("Using wallet:", activeWallet.address);
   const provider = await activeWallet.getEthereumProvider();
-  return new BrowserProvider(provider);
+  const ethProvider = new BrowserProvider(provider);
+  return ethProvider;
 };
 
 
@@ -50,7 +50,8 @@ export const isOnZkSyncSepolia = (currentChainId) => {
 
 const getContract = async (wallets) => {
   const provider = await getPrivyProvider(wallets);
-  const signer = await provider.getSigner();
+  const activeWallet = wallets.find((w) => w.walletClientType === 'metamask') || wallets[0];
+  const signer = await provider.getSigner(activeWallet.address);
   return new Contract(contractAddress, vaultAbi.abi, signer);
 };
 
@@ -114,6 +115,8 @@ export const fetchPendingStatus = async (address, wallets) => {
   if (!address) return null;
 
   try {
+     await switchToZkSyncSepolia(wallets);
+     
     const contract = await getReadOnlyContract(wallets);
     const counter = await contract.userRequestCounter(address);
     if (counter === 0n) return null;
@@ -213,7 +216,7 @@ export const refundUserFunds = async (wallets, requestId) => {
 
 export const getTokenBalance = async (tokenAddress, userAddress, wallets) => {
   try {
-    const provider = await getPrivyProvider(wallets);
+    const provider = await getPrivyProvider(wallets ,userAddress);
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
 
     if (isEth) {

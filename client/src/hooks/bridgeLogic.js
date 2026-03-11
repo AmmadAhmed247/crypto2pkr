@@ -1,4 +1,4 @@
-import { useUser } from "../config/userContext";
+import { useUser } from "../context/userContext";
 import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { lockUserFund } from "../api/bridgeService";

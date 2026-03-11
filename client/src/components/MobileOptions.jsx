@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {Home , PhoneCallIcon ,UserRound , UserIcon, LogOut  ,BringToFront } from "lucide-react"
-import {useUser} from "../config/userContext.jsx"
+import {useUser} from "../context/userContext.jsx"
 const MobileOptions = ({ open, onClose }) => {
 
   const {address , logout , isAuthenticated}=useUser();

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import SendModal from "../components/SendModal";
 import ReceiveModal from "../components/ReceiveModal";
 import { Menu, LayoutDashboard, BadgeCheck, Stone ,Verified} from "lucide-react";
-import { useUser } from "../config/userContext";
+import { useUser } from "../context/userContext";
 import RecentActivity from "../components/RecentActivity";
 import { useQuery } from "@tanstack/react-query";
 import { useBridgeLogic } from "../hooks/bridgeLogic";
