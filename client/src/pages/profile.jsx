@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback  } from "react";
+import { Link, useNavigate   } from 'react-router-dom'
 import SendModal from "../components/SendModal";
 import ReceiveModal from "../components/ReceiveModal";
-import { Menu, LayoutDashboard, BadgeCheck, Stone ,Verified} from "lucide-react";
+import { Menu, LayoutDashboard, BadgeCheck, Stone ,Verified , LogOut} from "lucide-react";
 import { useUser } from "../context/userContext";
 import RecentActivity from "../components/RecentActivity";
 import { useQuery } from "@tanstack/react-query";
@@ -25,11 +26,7 @@ const Animations = () => (
   `}</style>
 );
 
-const MOCK_USER = {
-  email: "ali.hassan@gmail.com",
-  picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=pakflow",
-  wallet: "0x4a3B8C2e1D9F3A7b6E5C4D2F1A0B9E8C7D6F5a4B",
-};
+
 
 const NAV = [
   { id: "overview",      icon: <LayoutDashboard size={17} />, label: "Overview" },
@@ -67,13 +64,19 @@ export default function Dashboard() {
   const [showRec, setShowRec]   = useState(false);
   const [copied, setCopied]     = useState(false);
   const [txFilter, setTxFilter] = useState("all");
+  const navigate=useNavigate()
+  console.log(txFilter);
+
+  
 
   // Claims state
   const [withdrawals, setWithdrawals]     = useState([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [claiming, setClaiming]           = useState({}); 
 
-  const { address, isAuthenticated, email, balance, wallets } = useUser();
+  const { address, isAuthenticated, email, balance, wallets  , logout} = useUser();
+  console.log(email);
+  
   const { data: exchangeRate = 0 } = useExchangeRate("ETH");
   const amount = exchangeRate * balance;
 
@@ -91,6 +94,11 @@ export default function Dashboard() {
     enabled: !!address,
   });
 
+  const handleLogout=()=>{
+    logout();
+    navigate("/")
+  }
+
   const analytics = userAnalytics?.data;
   const STATS = [
     { label: "Total Bridged",   value: `PKR ${analytics?.totalBridged   ?? "0.00"}`, pkr: `${analytics?.totalCrypto   ?? "0.00"} ETH`, accent: "border-l-green-500"   },
@@ -99,7 +107,11 @@ export default function Dashboard() {
     { label: "Transactions",    value:  analytics?.count                ?? 0,              pkr: "Total transactions", accent: "border-l-cyan-400" },
   ];
 
-  const user = MOCK_USER;
+  const user = {
+  email: email,
+  picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=pakflow",
+  wallet: address,
+};
 
   const claimable      = parseFloat(analytics?.totalClaiming ?? "0.00");
   const claimableCount = analytics?.count ?? "0";
@@ -200,10 +212,10 @@ export default function Dashboard() {
               <p className="mono text-xs text-green-400 truncate">{trunc(user.wallet)}</p>
             </div>
             <button
-              onClick={() => alert("Logged out")}
+              onClick={() => handleLogout()}
               className="text-red-400 hover:text-red-600 transition-colors"
               title="Logout"
-            >⏻</button>
+            ><LogOut size={15} /></button>
           </div>
         </aside>
 
@@ -299,7 +311,7 @@ export default function Dashboard() {
             {tab === "transactions" && (
               <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
                 <div className="flex gap-2 px-5 py-4 border-b border-green-50 flex-wrap">
-                  {["all", "send", "receive", "Bridge", "Paid", "pending", "claimable"].map(f => (
+                  {["all", "send", "receive", "Bridge", "Paid", "pending", "Claimed"].map(f => (
                     <button
                       key={f}
                       onClick={() => setTxFilter(f)}
@@ -335,8 +347,6 @@ export default function Dashboard() {
 
                 ) : (
                   <div className="flex flex-col gap-4">
-
-                    {/* Total claimable banner */}
                     {claimableList.length > 0 && (
                       <div className="bg-gradient-to-br from-green-800 to-emerald-600 rounded-3xl p-6 text-white flex flex-wrap justify-between items-center gap-4 shadow-xl shadow-green-200/50">
                         <div>
@@ -356,7 +366,6 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    {/* Pending (locked) info strip */}
                     {pendingList.length > 0 && (
                       <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-3">
                         <span className="text-amber-500 text-lg">⏳</span>
@@ -366,7 +375,7 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    {/* Per-request rows — claimable first, then pending */}
+             
                     {[...claimableList, ...pendingList].map((w) => (
                       <div
                         key={w.requestId}

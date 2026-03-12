@@ -9,9 +9,8 @@ export const UserProvider = ({ children }) => {
     const { user, authenticated, ready, logout, login, linkWallet } = usePrivy();
     const { wallets } = useWallets();
     const { createWallet } = useCreateWallet();
-    const [balance, setBalance] = useState("0.000000");
+    const [balance, setBalance] = useState("0.000");
     const [walletReady, setWalletReady] = useState(false);
-
     const wallet = wallets.length > 0 ? wallets[0] : null;
     const smartAddress = user?.smartWallet?.address;
     const embeddedAddress = user?.wallet?.address;

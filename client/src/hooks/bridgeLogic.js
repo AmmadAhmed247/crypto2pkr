@@ -5,8 +5,7 @@ import { lockUserFund } from "../api/bridgeService";
 
 
 export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
-    const {wallet , address}=useUser();
-
+    const {wallet,wallets , address}=useUser();
     const queryClient=useQueryClient();
     const[cryptoAmount, setCryptoAmount]=useState('');
     const[pkrAmount, setPkrAmount]=useState('0.00');
@@ -31,7 +30,7 @@ export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
             if(!wallet){
                 throw new Error("Wallet not connected!");
             };
-            return lockUserFund({ tokenAddress, amount, raastId, wallets:[wallet] });
+            return lockUserFund({ tokenAddress, amount, raastId, wallets  });
         },
         onSuccess:()=>{
             queryClient.invalidateQueries({queryKey:["balance",address]});

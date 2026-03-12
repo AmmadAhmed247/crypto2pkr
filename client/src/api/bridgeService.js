@@ -12,19 +12,20 @@ const ZKSYNC_SEPOLIA = {
   explorer: "https://sepolia.explorer.zksync.io/"
 };
 
-
 const getPrivyProvider = async (wallets) => {
   if (!wallets || wallets.length === 0) {
     throw new Error("No wallet connected.");
   }
+  
   const activeWallet = wallets.find((w) => w.walletClientType === 'metamask') 
     || wallets[0];
-  console.log("Using wallet:", activeWallet.address);
+
+  console.log("Using wallet:", activeWallet.address); 
+  
   const provider = await activeWallet.getEthereumProvider();
   const ethProvider = new BrowserProvider(provider);
   return ethProvider;
 };
-
 
 export const switchToZkSyncSepolia = async (wallets) => {
   if (!wallets || wallets.length === 0) {
@@ -66,7 +67,10 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
     if (!wallets || wallets.length === 0) {
       throw new Error("No wallet connected");
     }
+    
     const contract = await getContract(wallets);
+    console.log(contract);
+    
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
     const decimal=isEth ? 18 : 6 ;
     const parsedAmount = parseUnits(amount.toString(), decimal);
@@ -137,9 +141,7 @@ export const fetchPendingStatus = async (address, wallets) => {
     console.error("Failed to fetch pending status:", error);
     return null;
   }
-};
-
-
+}
 
 export const fetchAllWithdrawals = async (address, wallets) => {
   if (!address) return [];
@@ -158,16 +160,13 @@ export const fetchAllWithdrawals = async (address, wallets) => {
     const results = await Promise.all(
       ids.map(async (id) => {
         const w = await contract.withdrawals(address, id);
-
-        // Skip: already claimed (isProcessed) or deleted (amount === 0 after delete)
         if (w.amount === 0n || w.isProcessed) return null;
-
         const unlocksAt   = Number(w.timestamp) + TIMELOCK;
         const isClaimable = now > unlocksAt;
 
         return {
           requestId:   id.toString(),
-          amount:      w.amount,        // BigInt — use formatEther() to display
+          amount:      w.amount,        
           token:       w.token,
           raastId:     w.raastId,
           timestamp:   Number(w.timestamp),

@@ -1,81 +1,215 @@
-import React, { useState } from 'react'
-import { Link, useNavigate   } from 'react-router-dom'
-import { Menu, LogOut, User as UserIcon , BringToFront } from "lucide-react"
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Menu, LogOut, User as UserIcon, BringToFront, X } from "lucide-react"
 import MobileOptions from './MobileOptions.jsx'
-import { useUser } from "../context/userContext" 
-import { Provider, L1Signer } from "zksync-ethers";
-import { ethers } from "ethers";
+import { useUser } from "../context/userContext"
 
 const Navbar = () => {
   const [isopen, setIsOpen] = useState(false);
-    const { isAuthenticated, logout, address, wallet } = useUser();
+  const [scrollY, setScrollY] = useState(0);
+  const { isAuthenticated, logout, address, wallet } = useUser();
   const navigate = useNavigate();
-  const [bridging, setBridging] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleDisconnect = () => {
-    logout(); 
-    navigate("/"); 
+    logout();
+    navigate("/");
   };
 
+  const scrolled = scrollY > 40;
 
   return (
-    <div className='flex md:px-40 bg-green-50 justify-between items-center h-20 shadow-sm'>
-      <div className="flex items-center md:hidden px-4">
-        <Menu onClick={() => setIsOpen(!isopen)} className='h-7 w-7 text-green-800 cursor-pointer' />
-      </div>
-      <div className="flex items-center gap-2">
-        <Link to={"/"}>
-          <img src="l2.png" className='h-16' alt="logo" />
-        </Link>
-      </div>
-      {/* <button 
-              onClick={handleDisconnect}
-              className='flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition-all active:scale-95'
-            >
-              <LogOut size={16} />
-              Disconnect
-            </button> */}
-      
-      <div className="hidden md:flex items-center gap-4">
-        <Link to={"/contact"} className='text-sm font-medium text-gray-700 hover:text-green-700 transition-colors'>Contact</Link>
-        <Link to={"/about"} className='text-sm font-medium text-gray-700 hover:text-green-700 transition-colors'>About</Link>
-        
-        {isAuthenticated ? (
-          <>
-          <Link to={"/launch"} className='flex items-center gap-2 bg-green-300 border border-green-200 text-zinc-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-200 transition-all'>
-              <BringToFront size={16} />
-              Bridge
-            </Link>
-            
-            <Link to={"/profile"} className='flex items-center gap-2 bg-white border border-green-200 text-green-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:bg-green-50 transition-all'>
-              <UserIcon size={16} />
-              Dashboard
-            </Link>
-            <button 
-              onClick={handleDisconnect}
-              className='flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 hover:bg-red-100 transition-all active:scale-95'
-            >
-              <LogOut size={16} />
-              Disconnect
-            </button>
-          </>
-        ) : (
-          <Link to={"/launch"} className='bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-green-200 hover:bg-green-800 transition-all active:scale-95'>
-            Launch App
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500&display=swap');
+        .nav-root {
+          position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+          font-family: 'Syne', sans-serif;
+          transition: all 0.4s ease;
+        }
+        .nav-root.scrolled {
+          background: rgba(240,253,244,0.92);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid #dcfce7;
+          box-shadow: 0 2px 20px rgba(20,83,45,0.06);
+        }
+        .nav-root.top {
+          background: transparent;
+        }
+        .nav-inner {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 0 48px;
+          height: 72px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .nav-logo {
+          display: flex; align-items: center; gap: 10px;
+          text-decoration: none;
+        }
+        .nav-logo-icon {
+          width: 34px; height: 34px;
+          background: #14532d;
+          border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .nav-logo-text {
+          font-size: 17px; font-weight: 800;
+          color: #14532d; letter-spacing: -0.02em;
+        }
+        .nav-links {
+          display: flex; align-items: center; gap: 36px;
+        }
+        .nav-link {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 500;
+          color: #166534; opacity: 0.7;
+          text-decoration: none;
+          transition: opacity 0.2s;
+        }
+        .nav-link:hover { opacity: 1; }
+        .nav-actions {
+          display: flex; align-items: center; gap: 10px;
+        }
+        .btn-launch {
+          background: #14532d; color: white;
+          border: none; padding: 10px 22px;
+          border-radius: 100px;
+          font-family: 'Syne', sans-serif;
+          font-size: 13px; font-weight: 700;
+          cursor: pointer; text-decoration: none;
+          display: inline-flex; align-items: center; gap: 6px;
+          transition: all 0.3s ease;
+          letter-spacing: -0.01em;
+        }
+        .btn-launch:hover {
+          background: #166534;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 24px rgba(20,83,45,0.25);
+        }
+        .btn-outline {
+          background: white; color: #14532d;
+          border: 1.5px solid #bbf7d0;
+          padding: 9px 18px; border-radius: 100px;
+          font-family: 'Syne', sans-serif;
+          font-size: 13px; font-weight: 700;
+          cursor: pointer; text-decoration: none;
+          display: inline-flex; align-items: center; gap: 6px;
+          transition: all 0.3s ease;
+        }
+        .btn-outline:hover {
+          border-color: #14532d;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(20,83,45,0.1);
+        }
+        .btn-danger {
+          background: transparent; color: #dc2626;
+          border: 1.5px solid #fecaca;
+          padding: 9px 16px; border-radius: 100px;
+          font-family: 'Syne', sans-serif;
+          font-size: 13px; font-weight: 700;
+          cursor: pointer;
+          display: inline-flex; align-items: center; gap: 6px;
+          transition: all 0.3s ease;
+        }
+        .btn-danger:hover {
+          background: #fef2f2;
+          border-color: #dc2626;
+          transform: translateY(-1px);
+        }
+        .addr-pill {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px; font-weight: 500;
+          color: #16a34a; background: #f0fdf4;
+          border: 1px solid #dcfce7;
+          padding: 6px 12px; border-radius: 100px;
+          letter-spacing: 0.02em;
+        }
+        /* Mobile */
+        .mob-menu-btn {
+          background: none; border: none; cursor: pointer;
+          color: #14532d; padding: 4px;
+          display: none;
+        }
+        .mob-launch {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .nav-inner { padding: 0 20px; }
+          .nav-links { display: none; }
+          .nav-actions { display: none; }
+          .mob-menu-btn { display: flex; }
+          .mob-launch { display: inline-flex; }
+        }
+      `}</style>
+      <nav className={`nav-root ${scrolled ? 'scrolled' : 'top'}`}>
+        <div className="nav-inner">
+
+
+          <button className="mob-menu-btn" onClick={() => setIsOpen(!isopen)}>
+            {isopen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+  
+          <Link to="/" className="nav-logo">
+            <img src="l2.png" className='w-30' alt="" />
           </Link>
-        )}
-      </div>
+
+   
+          <div className="nav-links">
+            <Link to="/contact" className="nav-link">Contact</Link>
+            <Link to="/about" className="nav-link">About</Link>
+            {address && (
+              <span className="addr-pill">
+                {address.slice(0, 6)}…{address.slice(-4)}
+              </span>
+            )}
+          </div>
 
 
-      {!isAuthenticated && (
-        <div className="md:hidden px-4">
-          <Link to="/launch" className='bg-green-700 text-white rounded-xl px-4 py-1.5 text-xs font-bold'>Launch</Link>
+          <div className="nav-actions">
+            {isAuthenticated ? (
+              <>
+                <Link to="/launch" className="btn-outline">
+                  <BringToFront size={14} />
+                  Bridge
+                </Link>
+                <Link to="/profile" className="btn-outline">
+                  <UserIcon size={14} />
+                  Dashboard
+                </Link>
+                <button onClick={handleDisconnect} className="btn-danger">
+                  <LogOut size={14} />
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <Link to="/launch" className="btn-launch">
+                Launch App
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+              </Link>
+            )}
+          </div>
+
+          {!isAuthenticated && (
+            <Link to="/launch" className="btn-launch mob-launch" style={{ fontSize: 12, padding: '8px 16px' }}>
+              Launch
+            </Link>
+          )}
         </div>
-      )}
-
+      </nav>
+      <div style={{ height: 72 }} />
       <MobileOptions onClose={() => setIsOpen(false)} open={isopen} />
-    </div>
-  )
-}
+    </>
+  );
+};
 
-export default Navbar
+export default Navbar;
