@@ -12,20 +12,6 @@ const ZKSYNC_SEPOLIA = {
   explorer: "https://sepolia.explorer.zksync.io/"
 };
 
-const getPrivyProvider = async (wallets) => {
-  if (!wallets || wallets.length === 0) {
-    throw new Error("No wallet connected.");
-  }
-  
-  const activeWallet = wallets.find((w) => w.walletClientType === 'metamask') 
-    || wallets[0];
-
-  console.log("Using wallet:", activeWallet.address); 
-  
-  const provider = await activeWallet.getEthereumProvider();
-  const ethProvider = new BrowserProvider(provider);
-  return ethProvider;
-};
 
 export const switchToZkSyncSepolia = async (wallets) => {
   if (!wallets || wallets.length === 0) {
@@ -49,28 +35,35 @@ export const isOnZkSyncSepolia = (currentChainId) => {
          currentChainId === ZKSYNC_SEPOLIA.chainIdHex;
 };
 
-const getContract = async (wallets) => {
-  const provider = await getPrivyProvider(wallets);
-  const activeWallet = wallets.find((w) => w.walletClientType === 'metamask') || wallets[0];
-  const signer = await provider.getSigner(activeWallet.address);
+
+const getPrivyProvider = async (wallets, activeAddress) => {
+  if (!wallets || wallets.length === 0) {
+    throw new Error("No wallet connected.");
+  }
+  const activeWallet = activeAddress ? wallets.find((w) => w.address.toLowerCase() === activeAddress.toLowerCase()) || wallets[0]
+    : wallets[0];
+
+  console.log("Active wallet address:", activeWallet.address);
+
+  const eip1193 = await activeWallet.getEthereumProvider();
+  return new BrowserProvider(eip1193);
+};
+
+const getContract = async (wallets, activeAddress) => {
+  const provider = await getPrivyProvider(wallets, activeAddress);
+  const signer = await provider.getSigner();
+  console.log("Signer address:", await signer.getAddress());
   return new Contract(contractAddress, vaultAbi.abi, signer);
 };
 
-const getReadOnlyContract = async (wallets) => {
-  const provider = await getPrivyProvider(wallets);
-  return new Contract(contractAddress, vaultAbi.abi, provider);
-};
-
-
-export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) => {
+export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets , address }) => {
   try {
     if (!wallets || wallets.length === 0) {
       throw new Error("No wallet connected");
     }
     
-    const contract = await getContract(wallets);
+    const contract = await getContract(wallets , address);
     console.log(contract);
-    
     const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
     const decimal=isEth ? 18 : 6 ;
     const parsedAmount = parseUnits(amount.toString(), decimal);
@@ -88,15 +81,12 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
         value: isEth ? parsedAmount : 0n,
       }
     );
-
     console.log(" Transaction sent:", tx.hash);
     const receipt =await tx.wait();
     console.log(" Transaction confirmed:", receipt.hash);
-
     return receipt;
   } catch (error) {
     console.error(" Lock failed:", error);
-
     if (error.code === 4001 || error.code === "ACTION_REJECTED") {
       throw new Error("Transaction rejected by user");
     }
@@ -109,7 +99,7 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
     if (error.message?.includes("Token not whitelisted")) {
       throw new Error("This token is not supported");
     }
-    
+
     throw error;
   }
 };
@@ -117,11 +107,9 @@ export const lockUserFund = async ({ tokenAddress, amount, raastId, wallets }) =
 
 export const fetchPendingStatus = async (address, wallets) => {
   if (!address) return null;
-
   try {
-     await switchToZkSyncSepolia(wallets);
-     
-    const contract = await getReadOnlyContract(wallets);
+    await switchToZkSyncSepolia(wallets);
+    const contract = await getContract(wallets , address);
     const counter = await contract.userRequestCounter(address);
     if (counter === 0n) return null;
     const latestId = counter - 1n;
@@ -145,16 +133,12 @@ export const fetchPendingStatus = async (address, wallets) => {
 
 export const fetchAllWithdrawals = async (address, wallets) => {
   if (!address) return [];
-
   try {
     const contract = await getReadOnlyContract(wallets);
-    const counter  = await contract.userRequestCounter(address);
+    const counter= await contract.userRequestCounter(address);
     if (counter === 0n) return [];
-
-    const now      = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000);
     const TIMELOCK = 24 * 60 * 60;
-
-
     const ids = Array.from({ length: Number(counter) }, (_, i) => BigInt(i));
 
     const results = await Promise.all(

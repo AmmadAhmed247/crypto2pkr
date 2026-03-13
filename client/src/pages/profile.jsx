@@ -167,7 +167,6 @@ export default function Dashboard() {
     <>
       <Animations />
       <div className="flex min-h-screen bg-green-50/40">
-
         <aside className="w-60 shrink-0 bg-white rounded-md border-r border-green-100 flex flex-col p-5 gap-2 sticky top-0 h-screen overflow-y-auto">
           <nav className="flex flex-col gap-1 flex-1">
             {NAV.map(n => (
@@ -338,7 +337,7 @@ export default function Dashboard() {
                   </div>
 
                 ) : withdrawals.length === 0 ? (
-                  /* Empty state */
+                  
                   <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
                     <span className="text-5xl"><Stone /></span>
                     <p className="text-lg font-bold text-green-900">No claimable funds</p>
