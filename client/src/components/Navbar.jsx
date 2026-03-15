@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Menu, LogOut, User as UserIcon, BringToFront, X } from "lucide-react"
+import { Menu, LogOut, User as UserIcon, BringToFront, X ,Copy , } from "lucide-react"
 import MobileOptions from './MobileOptions.jsx'
 import { useUser } from "../context/userContext"
 
 const Navbar = () => {
   const [isopen, setIsOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [copied, setCopied] = useState(false);
   const { isAuthenticated, logout, address, wallet } = useUser();
   const navigate = useNavigate();
 
@@ -19,6 +20,12 @@ const Navbar = () => {
   const handleDisconnect = () => {
     logout();
     navigate("/");
+  };
+
+  const copy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const scrolled = scrollY > 40;
@@ -158,20 +165,31 @@ const Navbar = () => {
             {isopen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-  
+
           <Link to="/" className="nav-logo">
             <img src="l2.png" className='w-30' alt="" />
           </Link>
 
-   
+
           <div className="nav-links">
             <Link to="/contact" className="nav-link">Contact</Link>
             <Link to="/about" className="nav-link">About</Link>
             {address && (
-              <span className="addr-pill">
-                {address.slice(0, 6)}…{address.slice(-4)}
-              </span>
+              <button onClick={copy} className={`addr-pill ${copied ? 'bg-green-100 border-green-500' : ''}`}>
+                {copied ? (
+                  <span className="text-green-700 font-bold">Copied</span>
+                ) : (
+                  <div className="flex flex-row items-center">
+
+                    {address.slice(0, 6)}…{address.slice(-4)}
+                    <span className="ml-2 text-xs opacity-50"><Copy size={15} /></span>
+                  </div>
+                 
+                )}
+              </button>
             )}
+
+
           </div>
 
 
@@ -194,7 +212,7 @@ const Navbar = () => {
             ) : (
               <Link to="/launch" className="btn-launch">
                 Launch App
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>
               </Link>
             )}
           </div>

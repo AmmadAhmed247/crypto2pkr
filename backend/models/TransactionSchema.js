@@ -5,12 +5,18 @@ const transactionSchema = new mongoose.Schema({
     requestId:    { type: String, required: true },
     lockTxHash:   { type: String, required: true, unique: true },
     payoutTxHash: { type: String },
+    claimTxHash:{type:String},
     raastId:      { type: String, required: true },
     lockedAmount: { type: String, required: true },
     tokenSymbol:  { type: String, default: "CRYPTO" },
+    pkrAmount:{type:String , default:"0.00"},
+    type:{type:String,
+        enum:["SENT" , "DEPOSIT" , "BRIDGE"],
+        default:"BRIDGE"
+     },
     status: {
         type: String,
-        enum: ["LOCKED", "PAID", "FAILED", "REFUNDED"],
+        enum: ["LOCKED", "PAID", "FAILED", "REFUNDED","CLAIMED"],
         default: "LOCKED"
     },
     errorMessage: { type: String }

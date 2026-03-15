@@ -5,7 +5,7 @@ import path from "path";
 import Transaction from "../models/TransactionSchema.js";
 import vaultABI from "../utils/abi.json" with { type: "json" };
 import { simulatedBankPayout } from "../utils/payout.js";
-
+import axios from "axios"
 
 const POLL_INTERVAL_MS  = 5_000; 
 const BLOCK_CHUNK_SIZE  = 500;     
@@ -34,44 +34,56 @@ function saveLastBlock(block) {
     }
 }
 
+async function getPriceFromBinance(tokenSymbol) {
+    try {
+        const symbol = tokenSymbol.toUpperCase() === "ETH" ? "ETHUSDT" : `${tokenSymbol.toUpperCase()}USDT`;
+        const { data } = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+        return parseFloat(data.price);
+    } catch (err) {
+        console.error("Binance Price Fetch Error:", err.message);
+        return 2500; 
+    }
+}
 
-const buildTxDoc = (user, requestId, token, amount, raastId, txHash) => ({
+const buildTxDoc = (user, requestId, token, amount, raastId, txHash , pkrAmount) => ({
     userAddress:  user.toLowerCase(),
     requestId:    requestId.toString(),
     lockTxHash:   txHash,
     raastId:      raastId,
     lockedAmount: ethers.formatEther(amount),
     tokenSymbol:  token === ethers.ZeroAddress ? "ETH" : "ERC20",
-    status:       "LOCKED",
+    status:"LOCKED",
+    type:"BRIDGE",
+    pkrAmount:pkrAmount
 });
 
 
 async function handleLockInitiated(event) {
     const [user, requestId, token, amount, raastId] = event.args;
     const txHash = event.transactionHash;
-
+    const cryptoPriceInUsd=await getPriceFromBinance("ETH");
+    const usdToPkr=280;
+    const pkrAmount=(parseFloat(ethers.formatEther(amount))*cryptoPriceInUsd*usdToPkr).toFixed(2);
+    const type="BRIDGE";
     console.log(`[LockInitiated] tx=${txHash} | user=${user} | requestId=${requestId}`);
-
     try {
         const exists = await Transaction.findOne({ lockTxHash: txHash });
         if (!exists) {
-            await Transaction.create(buildTxDoc(user, requestId, token, amount, raastId, txHash));
-            console.log(`  → Saved to DB, triggering bank payout...`);
+            await Transaction.create(buildTxDoc(user, requestId, token, amount, raastId, txHash,pkrAmount,type));
+            console.log(` Saved to DB, triggering bank payout...`);
             await simulatedBankPayout(user, requestId.toString(), txHash);
         } else {
-            console.log(`  → Already in DB, skipping.`);
+            console.log(` Already in DB, skipping.`);
         }
     } catch (err) {
-        console.error(`  → DB Error (LockInitiated): ${err.message}`);
+        console.error(`  DB Error (LockInitiated): ${err.message}`);
     }
 }
 
 async function handlePayoutConfirmed(event) {
     const [user, requestId, _token, _amount] = event.args;
     const txHash = event.transactionHash;
-
     console.log(`[PayoutConfirmed] tx=${txHash} | user=${user} | requestId=${requestId}`);
-
     try {
         const result = await Transaction.findOneAndUpdate(
             { userAddress: user.toLowerCase(), requestId: requestId.toString() },
@@ -80,39 +92,62 @@ async function handlePayoutConfirmed(event) {
         );
 
         if (result) {
-            console.log(`  → DB updated to PAID.`);
+            console.log(`  DB updated to PAID.`);
         } else {
-            console.warn(`  → No matching TX found in DB for user=${user} requestId=${requestId}`);
+            console.warn(` No matching TX found in DB for user=${user} requestId=${requestId}`);
         }
     } catch (err) {
-        console.error(`  → DB Error (PayoutConfirmed): ${err.message}`);
+        console.error(` DB Error (PayoutConfirmed): ${err.message}`);
     }
 }
 
+async function handleClaim(event) {
+    const [user, requestId, _token, _amount] = event.args;
+    const txHash = event.transactionHash;
+
+    console.log(`[RefundClaimed] tx=${txHash} | user=${user} | requestId=${requestId}`);
+
+    try {
+        const result = await Transaction.findOneAndUpdate(
+            { userAddress: user.toLowerCase(), requestId: requestId.toString() }, 
+            { status: "CLAIMED", claimTxHash: txHash },                           
+            { new: true }
+        );
+
+        if (result) {
+            console.log(`DB updated to CLAIMED.`);
+        } else {
+            console.warn(`No matching TX found in DB for user=${user} requestId=${requestId}`);
+        }
+    } catch (error) {
+        console.error(`DB Error (Claimed): ${error.message}`);
+    }
+}
 
 async function pollEvents(lastBlockRef) {
     try {
         const currentBlock = await provider.getBlockNumber();
-
         if (currentBlock <= lastBlockRef.value) return;
 
         let from = lastBlockRef.value + 1;
 
         while (from <= currentBlock) {
             const to = Math.min(from + BLOCK_CHUNK_SIZE - 1, currentBlock);
-
             console.log(`Polling blocks ${from} → ${to}...`);
-            const [lockEvents, confirmEvents] = await Promise.all([
+
+            const [lockEvents, confirmEvents, claimEvents] = await Promise.all([
                 contract.queryFilter(contract.filters.LockInitiated(),   from, to),
                 contract.queryFilter(contract.filters.PayoutConfirmed(), from, to),
+                contract.queryFilter(contract.filters.RefundClaimed(),   from, to), 
             ]);
 
-            const allEvents = [...lockEvents, ...confirmEvents]
+            const allEvents = [...lockEvents, ...confirmEvents, ...claimEvents] 
                 .sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
 
             for (const event of allEvents) {
                 if (event.fragment?.name === "LockInitiated")   await handleLockInitiated(event);
                 if (event.fragment?.name === "PayoutConfirmed") await handlePayoutConfirmed(event);
+                if (event.fragment?.name === "RefundClaimed")   await handleClaim(event);
             }
 
             from = to + 1;
@@ -126,7 +161,6 @@ async function pollEvents(lastBlockRef) {
     }
 }
 
-// ─── Entry point ─────────────────────────────────────────────────────────────
 
 export const startEventListeners = async () => {
     console.log("═══════════════════════════════════════");

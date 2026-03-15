@@ -30,7 +30,7 @@ export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
             if(!wallet){
                 throw new Error("Wallet not connected!");
             };
-            return lockUserFund({ tokenAddress, amount, raastId, wallets , address  });
+            return lockUserFund({ tokenAddress, amount, raastId, wallets , address });
         },
         onSuccess:()=>{
             queryClient.invalidateQueries({queryKey:["balance",address]});

@@ -26,7 +26,6 @@ contract CryptoPkr is ReentrancyGuard {
     mapping(address => uint256) public userRequestCounter;
     mapping(address => bool) public whiteListedTokens;
 
-    // --- Events ---
     event LockInitiated(
         address indexed user,
         uint256 indexed requestId,
@@ -85,10 +84,7 @@ contract CryptoPkr is ReentrancyGuard {
         emit WhiteListed(_token, _status);
     }
 
-    /**
-     * @notice Locks funds (ETH or ERC20) to initiate a withdrawal request.
-     * @param _token Use address(0) for ETH, otherwise provide ERC20 address.
-     */
+
     function lockUserRequest(
         address _token,
         uint256 _amount,
@@ -122,13 +118,10 @@ contract CryptoPkr is ReentrancyGuard {
     function confirmPayout(address user, uint256 requestId) external onlyRelay nonReentrant {
         Withdrawal storage r = withdrawals[user][requestId];
         require(r.amount > 0 && !r.isProcessed, "Invalid Request");
-
         r.isProcessed = true;
         address _token = r.token;
         uint256 _amount = r.amount;
-
         _transferToTreasury(_token, _amount);
-
         emit PayoutConfirmed(user, requestId, _token, _amount);
         delete withdrawals[user][requestId];
     }

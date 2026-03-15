@@ -359,14 +359,12 @@ export default function CryptoBridgeLanding() {
         </SlideIn>
       </section>
 
-      {/* ══ FOOTER ══ */}
+
       <footer className="bg-white border-t border-green-100 py-12 px-12">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-green-900 rounded-lg flex items-center justify-center">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 0L14 8L8 16L2 8Z" fill="white"/></svg>
-            </div>
-            <span className="font-syne font-extrabold text-[15px] text-green-900 tracking-tight">PKR Bridge</span>
+  
+            <span className="font-syne font-extrabold text-[15px] text-green-900 tracking-tight"><img className='w-50 ' src="l2.png" alt="" /></span>
           </div>
           <p className="font-dm text-sm text-green-700 opacity-50">Powered by zkSync • Secure • Fast • Reliable</p>
           <div className="flex gap-5">
