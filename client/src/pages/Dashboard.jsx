@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ArrowUpRight, Shield, Zap, Clock, CheckCircle, Github, Twitter, ChevronRight } from 'lucide-react';
 
-/* ── Scroll-triggered slide-in ── */
+
 const useInView = (threshold = 0.15) => {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
@@ -59,7 +59,7 @@ export default function CryptoBridgeLanding() {
     { value: '< 3s',   label: 'Average Settlement',    sub: 'Fastest in the market'   },
   ];
 
-  const marqueeItems = ['zkSync Powered','Instant Settlement','PKR Ready','Zero Trust','On-Chain Verified','Ultra Low Fees' , 'Supports Google' , 'No Gas Fees' ];
+  const marqueeItems = ['zkSync Powered','Instant Settlement','PKR Ready','Zero Trust','On-Chain Verified','Ultra Low Fees', 'Supports Google', 'No Gas Fees'];
 
   const coins = [
     { w: 112, top: '1%',  left: '42%', rot: -28, rx: 44, anim: 1, dur: '4.1s', delay: '0s',    op: 1.0  },
@@ -71,10 +71,13 @@ export default function CryptoBridgeLanding() {
     { w:  66, top: '77%', left: '57%', rot: -19, rx: 37, anim: 1, dur: '4.8s', delay: '1.2s',  op: 0.58 },
   ];
 
+  // Smaller coins for mobile hero — unused (coins hidden on mobile)
+  const mobileCoins = [];
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-green-50" style={{ fontFamily: "'Syne', sans-serif" }}>
 
-      {/* ── Google Fonts + keyframes ── */}
+      {/*  Google Fonts + keyframes  */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
         .font-syne { font-family: 'Syne', sans-serif; }
@@ -91,7 +94,6 @@ export default function CryptoBridgeLanding() {
 
         .hero-outline { -webkit-text-stroke: 2px #14532d; color: transparent; }
 
-        /* Coin float variants — three distinct trajectories */
         @keyframes cf1 {
           0%,100% { transform: translateY(0px)   translateX(0px);   }
           38%     { transform: translateY(-15px)  translateX(5px);   }
@@ -110,150 +112,113 @@ export default function CryptoBridgeLanding() {
         .cf1 { animation: cf1 var(--cdur, 4.2s) ease-in-out infinite; }
         .cf2 { animation: cf2 var(--cdur, 5.0s) ease-in-out infinite; }
         .cf3 { animation: cf3 var(--cdur, 3.8s) ease-in-out infinite; }
+
+        /* Mobile hero outline: thinner stroke */
+        @media (max-width: 767px) {
+          .hero-outline { -webkit-text-stroke: 1.5px #14532d; }
+        }
       `}</style>
 
-      <section className="max-w-7xl mx-auto px-12 pt-20 pb-20 grid md:grid-cols-2 gap-16 items-center min-h-screen">
+      {/*  HERO  */}
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 pt-12 sm:pt-16 md:pt-20 pb-10 md:pb-20 grid md:grid-cols-2 gap-8 md:gap-16 items-center md:min-h-screen">
 
-
+        {/* Left: Text */}
         <div>
-    
           <SlideIn delay={0.1}>
-            <div className="mt-8 leading-none tracking-tighter">
-              <div className="font-syne font-extrabold text-green-900" style={{ fontSize: 'clamp(68px, 11vw, 148px)', lineHeight: 0.9 }}>Bridge</div>
-              <div className="font-syne font-extrabold hero-outline" style={{ fontSize: 'clamp(68px, 11vw, 148px)', lineHeight: 0.9 }}>Crypto</div>
-              <div className="font-syne font-extrabold text-green-900" style={{ fontSize: 'clamp(68px, 11vw, 148px)', lineHeight: 0.9 }}>to PKR.</div>
+            <div className="mt-4 md:mt-8 leading-none tracking-tighter">
+              <div className="font-syne font-extrabold text-green-900" style={{ fontSize: 'clamp(42px, 10vw, 148px)', lineHeight: 0.9 }}>Bridge</div>
+              <div className="font-syne font-extrabold hero-outline" style={{ fontSize: 'clamp(42px, 10vw, 148px)', lineHeight: 0.9 }}>Crypto</div>
+              <div className="font-syne font-extrabold text-green-900" style={{ fontSize: 'clamp(42px, 10vw, 148px)', lineHeight: 0.9 }}>to PKR.</div>
             </div>
           </SlideIn>
           <SlideIn delay={0.22}>
-            <p className="font-dm font-light text-green-800/80 text-lg leading-relaxed mt-8 max-w-md">
+            <p className="font-dm font-light text-green-800/80 text-base sm:text-lg leading-relaxed mt-5 sm:mt-8 max-w-md">
               The fastest and most secure way to convert cryptocurrency to Pakistani Rupees — powered by zkSync.
             </p>
           </SlideIn>
           <SlideIn delay={0.32}>
-            <div className="flex flex-wrap gap-4 mt-10">
-              <button className="inline-flex items-center gap-2 bg-green-900 hover:bg-green-800 text-white font-syne font-bold text-sm px-8 py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-900/25">
+            <div className="flex flex-wrap gap-3 sm:gap-4 mt-7 sm:mt-10">
+              <button className="inline-flex items-center gap-2 bg-green-900 hover:bg-green-800 text-white font-syne font-bold text-sm px-6 sm:px-8 py-3.5 sm:py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-900/25">
                 Start Bridging <ArrowRight className="w-4 h-4" />
               </button>
-              <button className="inline-flex items-center gap-2 border border-green-200 hover:border-green-900 hover:bg-white text-green-900 font-syne font-bold text-sm px-7 py-4 rounded-full transition-all hover:-translate-y-0.5">
+              <button className="inline-flex items-center gap-2 border border-green-200 hover:border-green-900 hover:bg-white text-green-900 font-syne font-bold text-sm px-5 sm:px-7 py-3.5 sm:py-4 rounded-full transition-all hover:-translate-y-0.5">
                 View Docs <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </SlideIn>
         </div>
 
-        <SlideIn delay={0.18} direction="right">
+        {/* Right: Coins — hidden on mobile, shown on md+ */}
+        <SlideIn delay={0.18} direction="right" className="hidden md:block">
           <div className="relative h-[520px] w-full overflow-hidden">
-
             <div
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full pointer-events-none"
               style={{ background: 'radial-gradient(ellipse, rgba(187,247,208,0.65) 0%, rgba(240,253,244,0.2) 55%, transparent 76%)' }}
             />
-
-{/*       
-            <svg className="absolute inset-22 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-              <ellipse cx="54%" cy="50%" rx="44%" ry="50%" fill="none" stroke="rgba(187,247,208,0.55)" strokeWidth="1" />
-              <ellipse cx="54%" cy="50%" rx="31%" ry="36%" fill="none" stroke="rgba(187,247,208,0.30)" strokeWidth="0.6" />
-            </svg> */}
-
             {coins.map((c, i) => (
               <div
                 key={i}
                 className={`cf${c.anim} absolute`}
-                style={{
-                  top: c.top,
-                  left: c.left,
-                  zIndex: Math.round(c.op * 7),
-                  opacity: c.op,
-                  '--cdur': c.dur,
-                  animationDelay: c.delay,
-                }}
+                style={{ top: c.top, left: c.left, zIndex: Math.round(c.op * 7), opacity: c.op, '--cdur': c.dur, animationDelay: c.delay }}
               >
-                <div style={{
-                  width: c.w,
-                  height: c.w,
-                  transform: `rotate(${c.rot}deg) rotateX(${c.rx}deg)`,
-                  filter: `drop-shadow(0 ${Math.round(c.w * 0.11)}px ${Math.round(c.w * 0.17)}px rgba(20,83,45,0.30))`,
-                }}>
-                  <svg viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-                    <defs>
-                      <linearGradient id={`ga${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%"   stopColor="#4ade80" />
-                        <stop offset="48%"  stopColor="#16a34a" />
-                        <stop offset="100%" stopColor="#14532d" />
-                      </linearGradient>
-                      <linearGradient id={`gb${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%"   stopColor="#86efac" />
-                        <stop offset="100%" stopColor="#15803d" />
-                      </linearGradient>
-                    </defs>
-                    <polygon fill={`url(#ga${i})`} points="127.9611,0 125.1661,9.5 125.1661,285.168 127.9611,287.958 255.9231,212.32" />
-                    <polygon fill={`url(#gb${i})`} points="127.962,0 0,212.32 127.962,287.959 127.962,154.158" />
-                    <polygon fill="#166534"         points="127.9611,312.1866 126.3861,314.1066 126.3861,412.3056 127.9611,416.9066 255.9991,236.5866" />
-                    <polygon fill="#22c55e"         points="127.962,416.9052 127.962,312.1852 0,236.5852" />
-                    <polygon fill="#15803d"         points="127.9611,287.9577 255.9211,212.3207 127.9611,154.1587" />
-                    <polygon fill="#4ade80"         points="0.0009,212.3208 127.9609,287.9578 127.9609,154.1588" />
-                  </svg>
+                <div style={{ width: c.w, height: c.w, transform: `rotate(${c.rot}deg) rotateX(${c.rx}deg)`, filter: `drop-shadow(0 ${Math.round(c.w * 0.11)}px ${Math.round(c.w * 0.17)}px rgba(20,83,45,0.30))` }}>
+                  <EthCoin index={i} />
                 </div>
               </div>
             ))}
-
-            {/* Sparkle dots scattered between coins */}
-            {/* <div className="absolute top-[17%] left-[61%] w-1.5 h-1.5 rounded-full bg-green-400 ping-slow"   style={{ zIndex: 9 }} />
-            <div className="absolute top-[43%] left-[79%] w-2   h-2   rounded-full bg-green-300 ping-slow-2" style={{ zIndex: 9 }} />
-            <div className="absolute top-[69%] left-[53%] w-1   h-1   rounded-full bg-green-500 ping-slow-3" style={{ zIndex: 9 }} />
-            <div className="absolute top-[11%] left-[80%] w-1.5 h-1.5 rounded-full bg-green-200 ping-slow"   style={{ zIndex: 9, animationDelay: '0.6s' }} />
-            <div className="absolute top-[60%] left-[75%] w-1   h-1   rounded-full bg-green-400 ping-slow-2" style={{ zIndex: 9, animationDelay: '1.1s' }} /> */}
-
           </div>
         </SlideIn>
+
+
       </section>
 
-      <div className="overflow-hidden whitespace-nowrap border-y border-green-100 bg-white py-4">
+      {/*  MARQUEE  */}
+      <div className="overflow-hidden whitespace-nowrap border-y border-green-100 bg-white py-3 sm:py-4">
         <div className="inline-flex animate-marquee">
           {[...marqueeItems, ...marqueeItems].map((t, i) => (
-            <span key={i} className="font-dm text-[12px] font-semibold uppercase tracking-widest text-green-700 px-8">
-              {t} <span className="opacity-30 mx-2">•</span>
+            <span key={i} className="font-dm text-[11px] sm:text-[12px] font-semibold uppercase tracking-widest text-green-700 px-5 sm:px-8">
+              {t} <span className="opacity-30 mx-1 sm:mx-2">•</span>
             </span>
           ))}
         </div>
       </div>
 
-  
-      <section className="max-w-7xl mx-auto px-12 py-20 grid md:grid-cols-3 gap-5">
+      {/* STATS  */}
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 py-12 sm:py-16 md:py-20 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
         {stats.map((s, i) => (
           <SlideIn key={i} delay={i * 0.1}>
-            <div className="bg-white border border-green-100 rounded-2xl p-8 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-900/8 transition-all duration-300">
-              <div className="font-syne font-extrabold text-5xl text-green-900 tracking-tight leading-none">{s.value}</div>
-              <div className="font-syne font-semibold text-base text-green-800 mt-4">{s.label}</div>
-              <div className="font-dm text-sm text-green-600 mt-1 opacity-70">{s.sub}</div>
+            <div className="bg-white border border-green-100 rounded-2xl p-6 sm:p-8 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-900/8 transition-all duration-300">
+              <div className="font-syne font-extrabold text-4xl sm:text-5xl text-green-900 tracking-tight leading-none">{s.value}</div>
+              <div className="font-syne font-semibold text-sm sm:text-base text-green-800 mt-3 sm:mt-4">{s.label}</div>
+              <div className="font-dm text-xs sm:text-sm text-green-600 mt-1 opacity-70">{s.sub}</div>
             </div>
           </SlideIn>
         ))}
       </section>
 
-      {/* ══ FEATURES ══ */}
-      <section className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-12">
+      {/* FEATURES */}
+      <section className="bg-white py-14 sm:py-20">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12">
           <SlideIn>
-            <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-14">
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 sm:gap-6 mb-10 sm:mb-14">
               <div>
-                <p className="font-dm text-[11px] font-semibold uppercase tracking-[0.12em] text-green-600">Why Rupia </p>
-                <div className="w-10 h-0.5 bg-green-500 my-4" />
-                <h2 className="font-syne font-extrabold text-green-900 tracking-tight leading-[1.02] m-0" style={{ fontSize: 'clamp(32px,4.5vw,56px)' }}>
+                <p className="font-dm text-[11px] font-semibold uppercase tracking-[0.12em] text-green-600">Why Rupia</p>
+                <div className="w-10 h-0.5 bg-green-500 my-3 sm:my-4" />
+                <h2 className="font-syne font-extrabold text-green-900 tracking-tight leading-[1.02] m-0" style={{ fontSize: 'clamp(28px, 5vw, 56px)' }}>
                   Built for<br />professionals.
                 </h2>
               </div>
-              <p className="font-dm font-light text-green-800/75 text-[15px] leading-relaxed max-w-xs md:text-right">
+              <p className="font-dm font-light text-green-800/75 text-[14px] sm:text-[15px] leading-relaxed max-w-xs md:text-right">
                 Every feature designed to give you the fastest, most reliable crypto-to-PKR experience on the market.
               </p>
             </div>
           </SlideIn>
 
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
             {features.map((f, i) => (
               <SlideIn key={i} delay={i * 0.12}>
-                <div className="border border-green-50 rounded-3xl p-9 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-green-900/10 hover:border-green-200 transition-all duration-400 cursor-default group">
-                  <div className="flex justify-between items-start mb-6">
+                <div className="border border-green-50 rounded-3xl p-6 sm:p-9 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-green-900/10 hover:border-green-200 transition-all duration-400 cursor-default group">
+                  <div className="flex justify-between items-start mb-5 sm:mb-6">
                     <div className="w-11 h-11 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center text-green-900 group-hover:bg-green-900 group-hover:text-white transition-colors duration-300">
                       {f.icon}
                     </div>
@@ -261,9 +226,9 @@ export default function CryptoBridgeLanding() {
                       {f.tag}
                     </span>
                   </div>
-                  <h3 className="font-syne font-bold text-[19px] text-green-900 tracking-tight mb-3">{f.title}</h3>
+                  <h3 className="font-syne font-bold text-[17px] sm:text-[19px] text-green-900 tracking-tight mb-2 sm:mb-3">{f.title}</h3>
                   <p className="font-dm text-sm text-green-800/75 leading-relaxed">{f.desc}</p>
-                  <div className="inline-flex items-center gap-1.5 text-green-600 font-syne font-semibold text-[13px] mt-6 group/link cursor-pointer">
+                  <div className="inline-flex items-center gap-1.5 text-green-600 font-syne font-semibold text-[13px] mt-5 sm:mt-6 group/link cursor-pointer">
                     Learn more <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
                   </div>
                 </div>
@@ -273,44 +238,47 @@ export default function CryptoBridgeLanding() {
         </div>
       </section>
 
-      {/* ══ HOW IT WORKS ══ */}
-      <section className="max-w-7xl mx-auto px-12 py-24">
-        <div className="grid md:grid-cols-2 gap-24 items-start">
+      {/* HOW IT WORKS  */}
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 py-16 sm:py-24">
+        <div className="grid md:grid-cols-2 gap-12 sm:gap-16 md:gap-24 items-start">
 
+          {/* Sticky left panel */}
           <SlideIn direction="left">
             <div className="md:sticky md:top-28">
               <p className="font-dm text-[11px] font-semibold uppercase tracking-[0.12em] text-green-600">Process</p>
-              <div className="w-10 h-0.5 bg-green-500 my-4" />
-              <h2 className="font-syne font-extrabold text-green-900 tracking-tight leading-none m-0" style={{ fontSize: 'clamp(38px,5vw,60px)' }}>
+              <div className="w-10 h-0.5 bg-green-500 my-3 sm:my-4" />
+              <h2 className="font-syne font-extrabold text-green-900 tracking-tight leading-none m-0" style={{ fontSize: 'clamp(32px, 6vw, 60px)' }}>
                 Three steps.<br />That's all.
               </h2>
-              <p className="font-dm font-light text-green-800/75 text-[15px] leading-relaxed mt-5 max-w-xs">
+              <p className="font-dm font-light text-green-800/75 text-[14px] sm:text-[15px] leading-relaxed mt-4 sm:mt-5 max-w-xs">
                 No KYC delays, no manual approvals — just instant crypto-to-PKR conversion.
               </p>
-              <div className="mt-12 bg-green-900 rounded-2xl p-7">
+              <div className="mt-8 sm:mt-12 bg-green-900 rounded-2xl p-5 sm:p-7">
                 <p className="font-dm text-[10px] font-semibold uppercase tracking-widest text-green-400 mb-2">Current Rate</p>
-                <p className="font-syne font-extrabold text-white text-3xl tracking-tight">1 ETH = 863,420</p>
+                <p className="font-syne font-extrabold text-white text-2xl sm:text-3xl tracking-tight">1 ETH = 863,420</p>
                 <p className="font-dm text-xs text-green-400 mt-2">Updated 2 seconds ago • Live feed</p>
               </div>
             </div>
           </SlideIn>
 
+          {/* Steps */}
           <div>
             {steps.map((step, i) => (
               <SlideIn key={i} delay={i * 0.14}>
                 <div
-                  className="flex gap-6 py-7 border-b border-green-100 last:border-0 cursor-pointer group transition-all"
+                  className="flex gap-4 sm:gap-6 py-6 sm:py-7 border-b border-green-100 last:border-0 cursor-pointer group transition-all"
                   onMouseEnter={() => setActiveStep(i)}
+                  onClick={() => setActiveStep(i)}
                 >
                   <span className={`font-dm text-[13px] font-bold tracking-wide pt-1 min-w-[34px] transition-colors duration-300 ${activeStep === i ? 'text-green-900' : 'text-green-200'}`}>
                     {step.num}
                   </span>
                   <div className="flex-1">
-                    <div className="flex justify-between items-center mb-2.5">
-                      <h3 className={`font-syne font-bold text-[21px] tracking-tight m-0 transition-colors duration-300 ${activeStep === i ? 'text-green-900' : 'text-green-700'}`}>
+                    <div className="flex justify-between items-center mb-2 sm:mb-2.5">
+                      <h3 className={`font-syne font-bold text-[18px] sm:text-[21px] tracking-tight m-0 transition-colors duration-300 ${activeStep === i ? 'text-green-900' : 'text-green-700'}`}>
                         {step.title}
                       </h3>
-                      <div className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${activeStep === i ? 'bg-green-900 border-green-900' : 'bg-green-50 border-green-100'}`}>
+                      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex items-center justify-center transition-all duration-300 flex-shrink-0 ml-3 ${activeStep === i ? 'bg-green-900 border-green-900' : 'bg-green-50 border-green-100'}`}>
                         <CheckCircle className={`w-4 h-4 ${activeStep === i ? 'text-white' : 'text-green-500'}`} />
                       </div>
                     </div>
@@ -321,7 +289,7 @@ export default function CryptoBridgeLanding() {
             ))}
 
             <SlideIn delay={0.45}>
-              <button className="w-full mt-10 flex items-center justify-center gap-2 bg-green-900 hover:bg-green-800 text-white font-syne font-bold text-sm py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-900/25">
+              <button className="w-full mt-8 sm:mt-10 flex items-center justify-center gap-2 bg-green-900 hover:bg-green-800 text-white font-syne font-bold text-sm py-4 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-900/25">
                 Start Your First Bridge <ArrowRight className="w-4 h-4" />
               </button>
             </SlideIn>
@@ -329,28 +297,28 @@ export default function CryptoBridgeLanding() {
         </div>
       </section>
 
-      {/* ══ CTA ══ */}
-      <section className="max-w-7xl mx-auto px-12 pb-24">
+      {/* CTA  */}
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 md:px-12 pb-16 sm:pb-24">
         <SlideIn>
-          <div className="bg-green-900 rounded-[28px] px-16 py-20 relative overflow-hidden">
+          <div className="bg-green-900 rounded-[20px] sm:rounded-[28px] px-6 sm:px-10 md:px-16 py-12 sm:py-16 md:py-20 relative overflow-hidden">
             <div className="absolute -top-20 -right-20 w-72 h-72 border border-white/5 rounded-full pointer-events-none" />
             <div className="absolute -top-10 -right-10 w-48 h-48 border border-white/8 rounded-full pointer-events-none" />
             <div className="absolute -bottom-16 left-1/3 w-48 h-48 bg-green-400/8 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid md:grid-cols-[1fr_auto] gap-12 items-center">
+            <div className="relative z-10 grid md:grid-cols-[1fr_auto] gap-8 sm:gap-12 items-center">
               <div>
-                <p className="font-dm text-[11px] font-semibold uppercase tracking-[0.12em] text-green-400 mb-5">Get Started Today</p>
-                <h2 className="font-syne font-extrabold text-white tracking-tight leading-[1.02] m-0" style={{ fontSize: 'clamp(32px,4vw,52px)' }}>
+                <p className="font-dm text-[11px] font-semibold uppercase tracking-[0.12em] text-green-400 mb-4 sm:mb-5">Get Started Today</p>
+                <h2 className="font-syne font-extrabold text-white tracking-tight leading-[1.02] m-0" style={{ fontSize: 'clamp(26px, 5vw, 52px)' }}>
                   Ready to bridge<br />your first crypto?
                 </h2>
-                <p className="font-dm font-light text-green-300/80 text-base leading-relaxed mt-4">
+                <p className="font-dm font-light text-green-300/80 text-sm sm:text-base leading-relaxed mt-3 sm:mt-4">
                   No account needed. Just connect and bridge.
                 </p>
               </div>
-              <div className="flex flex-col gap-3 min-w-[190px]">
-                <button className="flex items-center justify-center gap-2 bg-white hover:bg-green-50 text-green-900 font-syne font-bold text-sm py-4 px-8 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl">
+              <div className="flex flex-row md:flex-col gap-3 min-w-0 md:min-w-[190px]">
+                <button className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-green-50 text-green-900 font-syne font-bold text-sm py-3.5 sm:py-4 px-6 sm:px-8 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-xl">
                   Launch App <ArrowUpRight className="w-4 h-4" />
                 </button>
-                <button className="flex items-center justify-center gap-2 border border-white/15 hover:border-white/30 text-green-300 font-syne font-semibold text-sm py-4 px-8 rounded-full transition-all">
+                <button className="flex-1 md:flex-none flex items-center justify-center gap-2 border border-white/15 hover:border-white/30 text-green-300 font-syne font-semibold text-sm py-3.5 sm:py-4 px-6 sm:px-8 rounded-full transition-all">
                   Read Docs
                 </button>
               </div>
@@ -359,23 +327,53 @@ export default function CryptoBridgeLanding() {
         </SlideIn>
       </section>
 
-
-      <footer className="bg-white border-t border-green-100 py-12 px-12">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-6">
+      {/* ══ FOOTER ══ */}
+      <footer className="bg-white border-t border-green-100 py-8 sm:py-12 px-5 sm:px-8 md:px-12">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4 sm:gap-6">
           <div className="flex items-center gap-2">
-  
-            <span className="font-syne font-extrabold text-[15px] text-green-900 tracking-tight"><img className='w-50 ' src="l2.png" alt="" /></span>
+            <span className="font-syne font-extrabold text-[15px] text-green-900 tracking-tight">
+              <img className="w-36 sm:w-50" src="l2.png" alt="Rupia" />
+            </span>
           </div>
-          <p className="font-dm text-sm text-green-700 opacity-50">Powered by zkSync • Secure • Fast • Reliable</p>
-          <div className="flex gap-5">
+          <p className="font-dm text-xs sm:text-sm text-green-700 opacity-50 hidden sm:block">Powered by zkSync • Secure • Fast • Reliable</p>
+          <div className="flex gap-4 sm:gap-5">
             <a href="#" className="text-green-700 opacity-40 hover:opacity-80 transition-opacity"><Github className="w-5 h-5" /></a>
             <a href="#" className="text-green-700 opacity-40 hover:opacity-80 transition-opacity"><Twitter className="w-5 h-5" /></a>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-green-50 text-center">
+        {/* Mobile-only tagline */}
+        <div className="max-w-7xl mx-auto mt-3 sm:hidden">
+          <p className="font-dm text-xs text-green-700 opacity-50">Powered by zkSync • Secure • Fast • Reliable</p>
+        </div>
+        <div className="max-w-7xl mx-auto mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-green-50 text-center">
           <p className="font-dm text-xs text-green-700 opacity-40">© 2025 PKR Bridge. All rights reserved.</p>
         </div>
       </footer>
     </div>
+  );
+}
+
+
+function EthCoin({ index: i }) {
+  return (
+    <svg viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        <linearGradient id={`ga${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stopColor="#4ade80" />
+          <stop offset="48%"  stopColor="#16a34a" />
+          <stop offset="100%" stopColor="#14532d" />
+        </linearGradient>
+        <linearGradient id={`gb${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stopColor="#86efac" />
+          <stop offset="100%" stopColor="#15803d" />
+        </linearGradient>
+      </defs>
+      <polygon fill={`url(#ga${i})`} points="127.9611,0 125.1661,9.5 125.1661,285.168 127.9611,287.958 255.9231,212.32" />
+      <polygon fill={`url(#gb${i})`} points="127.962,0 0,212.32 127.962,287.959 127.962,154.158" />
+      <polygon fill="#166534"         points="127.9611,312.1866 126.3861,314.1066 126.3861,412.3056 127.9611,416.9066 255.9991,236.5866" />
+      <polygon fill="#22c55e"         points="127.962,416.9052 127.962,312.1852 0,236.5852" />
+      <polygon fill="#15803d"         points="127.9611,287.9577 255.9211,212.3207 127.9611,154.1587" />
+      <polygon fill="#4ade80"         points="0.0009,212.3208 127.9609,287.9578 127.9609,154.1588" />
+    </svg>
   );
 }

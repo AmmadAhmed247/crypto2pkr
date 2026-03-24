@@ -50,7 +50,7 @@ function SendModal({ onClose }) {
   };
 
   return (
-    <div className="animate-fade-in fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="animate-fade-in fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" >
       <div className="animate-slide-up bg-white rounded-3xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
 
         <div className="flex justify-between items-center px-6 py-5 border-b border-green-100">
