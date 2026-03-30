@@ -24,13 +24,22 @@ function SendModal({ onClose }) {
       const provider = new BrowserProvider(eip1193);
       const signer = await provider.getSigner();
       const targetAddress = recipent.trim();
+
+      const parsedAmount = parseEther(amount.toString());
+      const userBalance = await provider.getBalance(address);
+
+      if (parsedAmount > userBalance) {
+        throw new Error("Insufficient Balance...")
+      }
+
       if (!targetAddress.startsWith("0x") || targetAddress.length !== 42) {
         throw new Error("Invalid Wallet Address!");
       }
       const tx = await signer.sendTransaction({
-        to: targetAddress, 
+        to: targetAddress,
         value: parseEther(amount.toString()),
       });
+
 
       console.log(`Tx Hash: ${tx.hash}`);
       await tx.wait();
@@ -39,10 +48,20 @@ function SendModal({ onClose }) {
 
     } catch (error) {
       console.error(error);
-      if (error.code === "ACTION_REJECTED") {
-        alert("Transaction rejected by user.");
-      } else {
-        alert(`Error: ${error.message}`);
+      setLoading(false);
+
+      if (error.code === "INSUFFICIENT_FUNDS" || error.message.toLowerCase().includes("insufficient funds")) {
+        alert(" Transaction Failed: Aapke wallet mein balance kam hai. Please Gas Fees (ETH) check karein.");
+      }
+      else if (error.code === "ACTION_REJECTED") {
+        alert("Transaction Cancelled: Aapne signature reject kar di.");
+      }
+      else if (error.code === "INVALID_ARGUMENT") {
+        alert(" Invalid Address: Recipient ka wallet address sahi nahi hai.");
+      }
+      else {
+
+        alert(` Error: ${error.message || "Kuch masla ho gaya hai!"}`);
       }
     } finally {
       setLoading(false);
@@ -112,8 +131,8 @@ function SendModal({ onClose }) {
             disabled={!ready || loading}
             onClick={handleTransfer}
             className={`w-full py-3.5 rounded-xl font-bold text-base transition-all ${ready && !loading
-                ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 active:scale-[0.98]"
-                : "bg-gray-100 text-gray-300 cursor-not-allowed"
+              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 active:scale-[0.98]"
+              : "bg-gray-100 text-gray-300 cursor-not-allowed"
               }`}
           >
             {loading ? "Processing..." : "Confirm Transfer →"}
