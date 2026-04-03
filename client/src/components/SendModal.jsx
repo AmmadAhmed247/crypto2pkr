@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { DollarSign, Phone, Fuel, Wallet } from "lucide-react"
 import { useUser } from '../context/userContext';
-import { BrowserProvider, parseEther } from 'ethers';
-
+import { TokenETH, TokenUSDT, TokenUSDC } from '@web3icons/react';
 function SendModal({ onClose }) {
   const { wallet, address, balance } = useUser();
   const [amount, setAmount] = useState("");
@@ -51,17 +50,17 @@ function SendModal({ onClose }) {
       setLoading(false);
 
       if (error.code === "INSUFFICIENT_FUNDS" || error.message.toLowerCase().includes("insufficient funds")) {
-        alert(" Transaction Failed: Aapke wallet mein balance kam hai. Please Gas Fees (ETH) check karein.");
+        alert(" Transaction Failed: INSUFFICIENT_FUNDS");
       }
       else if (error.code === "ACTION_REJECTED") {
-        alert("Transaction Cancelled: Aapne signature reject kar di.");
+        alert("Transaction Cancelled: by user.");
       }
       else if (error.code === "INVALID_ARGUMENT") {
-        alert(" Invalid Address: Recipient ka wallet address sahi nahi hai.");
+        alert(" Invalid Address: address is not valid");
       }
       else {
 
-        alert(` Error: ${error.message || "Kuch masla ho gaya hai!"}`);
+        alert(` Error: ${error.message || "okaaa"}`);
       }
     } finally {
       setLoading(false);
@@ -82,12 +81,12 @@ function SendModal({ onClose }) {
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Amount (USDT)</label>
             <div className="flex items-center bg-green-50 border border-green-200 rounded-xl overflow-hidden focus-within:border-green-500 transition-colors">
-              <span className="px-3 text-green-500 text-lg font-bold"><DollarSign /></span>
+              <span className="px-3 text-green-500 text-lg font-bold"><TokenETH /></span>
               <input type="number" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
                 className="flex-1 bg-transparent py-3 text-green-900 font-semibold text-lg outline-none placeholder:text-green-200" />
-              <span className="px-3 text-xs font-bold text-green-400">USDT</span>
+              <span className="px-3 text-xs font-bold text-green-400">ETH</span>
             </div>
-            {amount && <p className="text-xs text-emerald-500 mt-1.5 font-medium">≈ PKR {(parseFloat(amount) * PKR).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>}
+            {amount && <p className="text-xs text-emerald-500 mt-1.5 font-medium">Total Wallet : {balance}</p>}
           </div>
 
           {/* Raast */}
@@ -96,7 +95,7 @@ function SendModal({ onClose }) {
             <div className="flex items-center bg-green-50 border border-green-200 rounded-xl overflow-hidden focus-within:border-green-500 transition-colors">
               <span className="px-3 text-green-400"><Wallet size={20} /></span>
               <input type="text" placeholder="wallet Address" value={recipent} onChange={e => setRecipent(e.target.value)}
-                className="flex-1 bg-transparent py-3 text-green-900 outline-none placeholder:text-green-200 text-sm" />
+                className="flex-1 bg-transparent py-3 text-green-900 outline-none placeholder:text-green-200 text-xs" />
             </div>
           </div>
 
