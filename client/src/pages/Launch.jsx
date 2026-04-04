@@ -11,7 +11,7 @@ import { useUser } from '../context/userContext.jsx';
 const cryptoOptions = [
   { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH size={20} />, address: '0x0000000000000000000000000000000000000000' },
   { symbol: 'USDT', name: 'Tether', icon: <TokenUSDT size={20} />, address: '0xYOUR_USDT_ADDRESS' },
-  { symbol: 'USDC', name: 'USD Coin', icon: <TokenUSDC size={20} />, address: '0xYOUR_USDC_ADDRESS' },
+  { symbol: 'USDC', name: 'USD Coin', icon: <TokenUSDC size={20} />, address: '0xAe045DE5638162fa134807Cb558E15A3F5A7F853' },
 ];
 
 export default function BridgeComponent() {
@@ -50,7 +50,7 @@ export default function BridgeComponent() {
     setStep(2);
   };
 
-  
+
 
   const handleConfirm = () => {
     if (!tokenAddress || !cryptoAmount || !raastId.trim()) return;
@@ -137,77 +137,111 @@ export default function BridgeComponent() {
 
           <div className="p-6">
             {step === 1 && (
-              <div className="space-y-5">
-                <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
-                  <div className="flex justify-between mb-3 text-sm">
-                    <label className="font-medium text-zinc-700">From</label>
-                    <span className="text-zinc-500">Balance: {balance} {selectedCrypto}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 flex items-center gap-2 font-semibold">
-                      {selectedToken?.icon}
-                      {selectedCrypto}
-                    </div>
-                    <input
-                      type="number"
-                      value={cryptoAmount}
-                      onChange={(e) => handleChangeAmount(e.target.value)}
-                      placeholder="0.0"
-                      className="flex-1 bg-transparent text-3xl font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    {['0.001', '0.01', '0.1', 'Max'].map(v => (
-                      <button key={v} onClick={() => handleChangeAmount(v === 'Max' ? balance : v)} className="px-3 py-1 text-xs border border-zinc-200 rounded hover:bg-zinc-100">{v}</button>
-                    ))}
-                  </div>
-                </div>
+  <div className="space-y-5">
+    <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+      <div className="flex justify-between mb-3 text-sm">
+        <label className="font-medium text-zinc-700">From</label>
+        <span className="text-zinc-500">Balance: {balance} {selectedCrypto}</span>
+      </div>
 
-                <div className="flex justify-center -my-2">
-                  <div className="bg-green-100 rounded-full p-3 border-4 border-white">
-                    <ArrowDown className="w-5 h-5 text-zinc-700" />
-                  </div>
-                </div>
+      <div className="flex gap-2 mb-6">
+        {cryptoOptions.map((opt) => (
+          <button
+            key={opt.symbol}
+            onClick={() => setSelectedCrypto(opt.symbol)}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${
+              selectedCrypto === opt.symbol
+                ? "bg-zinc-900 text-white border-zinc-900 shadow-md"
+                : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100"
+            }`}
+          >
+            {opt.icon}
+            {opt.symbol}
+          </button>
+        ))}
+      </div>
 
-                <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
-                  <label className="block text-sm font-medium text-zinc-700 mb-3">To</label>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 font-semibold">🇵🇰 PKR</div>
-                    <div className="text-3xl font-bold text-zinc-900">{pkrAmount}</div>
-                  </div>
-                </div>
+      {/* 2. Amount Input Section */}
+      <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-zinc-100 shadow-sm">
+        <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-2 flex items-center gap-2 font-bold text-zinc-800">
+          {selectedToken?.icon}
+          {selectedCrypto}
+        </div>
+        <input
+          type="number"
+          value={cryptoAmount}
+          onChange={(e) => handleChangeAmount(e.target.value)}
+          placeholder="0.0"
+          className="flex-1 bg-transparent text-3xl font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-zinc-700 mt-0.5" />
-                    <div>
-                      <p>1 {selectedCrypto} ≈ {exchangeRate > 0 ? exchangeRate.toLocaleString() : '—'} PKR</p>
-                      <p className="text-xs text-zinc-600 mt-1">~2 min processing</p>
-                    </div>
-                  </div>
-                </div>
+      {/* 3. Quick Select Buttons */}
+      <div className="flex gap-2 mt-4">
+        {['0.001', '0.01', '0.1', 'Max'].map(v => (
+          <button 
+            key={v} 
+            onClick={() => handleChangeAmount(v === 'Max' ? balance : v)} 
+            className="flex-1 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:bg-zinc-900 hover:text-white transition-colors"
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+    </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-zinc-700">Raast ID (Recipient)</label>
-                  <input
-                    type="text"
-                    value={raastId}
-                    onChange={e => setRaastId(e.target.value.trim())}
-                    placeholder="Enter Raast ID"
-                    className="w-full px-4 py-3 border border-zinc-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                  />
-                  <p className="text-xs text-zinc-500">PKR payout destination</p>
-                </div>
+    {/* Arrow Icon */}
+    <div className="flex justify-center -my-2 relative z-10">
+      <div className="bg-green-600 rounded-full p-3 border-4 border-white shadow-lg">
+        <ArrowDown className="w-5 h-5 text-white" />
+      </div>
+    </div>
 
-                <button
-                  onClick={handleReview}
-                  disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0  }
-                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-4 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Review Bridge
-                </button>
-              </div>
-            )}
+    {/* Receive Section */}
+    <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+      <label className="block text-sm font-medium text-zinc-700 mb-3">To</label>
+      <div className="flex items-center gap-3">
+        <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 font-bold flex items-center gap-2">
+          <span className="text-xl">🇵🇰</span> PKR
+        </div>
+        <div className="text-3xl font-bold text-zinc-900">
+          {Number(pkrAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </div>
+      </div>
+    </div>
+
+    {/* Info Card */}
+    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm">
+      <div className="flex items-start gap-3">
+        <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+        <div>
+          <p className="font-semibold text-blue-900">1 {selectedCrypto} ≈ {exchangeRate > 0 ? exchangeRate.toLocaleString() : '—'} PKR</p>
+          <p className="text-xs text-blue-700 mt-1">Real-time market rate applied.</p>
+        </div>
+      </div>
+    </div>
+
+    {/* Raast ID Input */}
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-zinc-700">Raast ID (Phone or IBAN)</label>
+      <input
+        type="text"
+        value={raastId}
+        onChange={e => setRaastId(e.target.value.trim())}
+        placeholder="e.g. 923001234567"
+        className="w-full px-4 py-4 border border-zinc-200 rounded-xl font-mono text-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+      />
+    </div>
+
+    <button
+      onClick={handleReview}
+      disabled={Number(cryptoAmount) <= 0 || !raastId.trim() || exchangeRate <= 0}
+      className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-5 rounded-2xl font-bold text-lg shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-[0.98]"
+    >
+      Review Bridge Request
+    </button>
+  </div>
+)}
 
             {step === 2 && (
               <div className="space-y-6">
