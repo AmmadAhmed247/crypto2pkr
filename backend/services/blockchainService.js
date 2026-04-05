@@ -56,27 +56,60 @@ const buildTxDoc = (user, requestId, token, amount, raastId, txHash , pkrAmount)
     type:"BRIDGE",
     pkrAmount:pkrAmount
 });
+function formatTokenAmount(amount, token) {
+    if (token === ethers.ZeroAddress) {
+        return ethers.formatEther(amount); 
+    }
+    return ethers.formatUnits(amount, 6); 
+}
 
+function getTokenSymbol(token) {
+    if (token === ethers.ZeroAddress) return "ETH";
+    if (token.toLowerCase() === process.env.USDC_ADDRESS?.toLowerCase()) return "USDC";
+    if (token.toLowerCase() === process.env.USDT_ADDRESS?.toLowerCase()) return "USDT";
+    return "ERC20";
+}
 
 async function handleLockInitiated(event) {
     const [user, requestId, token, amount, raastId] = event.args;
     const txHash = event.transactionHash;
-    const cryptoPriceInUsd=await getPriceFromBinance("ETH");
-    const usdToPkr=280;
-    const pkrAmount=(parseFloat(ethers.formatEther(amount))*cryptoPriceInUsd*usdToPkr).toFixed(2);
-    const type="BRIDGE";
-    console.log(`[LockInitiated] tx=${txHash} | user=${user} | requestId=${requestId}`);
+
+    const tokenSymbol = getTokenSymbol(token);
+    const formattedAmount = formatTokenAmount(amount, token);
+    let pkrAmount;
+    if (tokenSymbol === "USDC" || tokenSymbol === "USDT") {
+        const usdToPkr = 282; // your rate
+        pkrAmount = (parseFloat(formattedAmount) * usdToPkr).toFixed(2);
+    } else {
+    
+        const cryptoPriceInUsd = await getPriceFromBinance("ETH");
+        const usdToPkr = 282;
+        pkrAmount = (parseFloat(formattedAmount) * cryptoPriceInUsd * usdToPkr).toFixed(2);
+    }
+
+    console.log(`[LockInitiated] tx=${txHash} | user=${user} | token=${tokenSymbol} | amount=${formattedAmount} | pkr=${pkrAmount}`);
+
     try {
         const exists = await Transaction.findOne({ lockTxHash: txHash });
         if (!exists) {
-            await Transaction.create(buildTxDoc(user, requestId, token, amount, raastId, txHash,pkrAmount,type));
-            console.log(` Saved to DB, triggering bank payout...`);
+            await Transaction.create({
+                userAddress:  user.toLowerCase(),
+                requestId:    requestId.toString(),
+                lockTxHash:   txHash,
+                raastId:      raastId,
+                lockedAmount: formattedAmount, 
+                tokenSymbol:  tokenSymbol,     
+                status:       "LOCKED",
+                type:         "BRIDGE",
+                pkrAmount:    pkrAmount
+            });
+            console.log(`Saved to DB | ${tokenSymbol} ${formattedAmount} → ${pkrAmount} PKR`);
             await simulatedBankPayout(user, requestId.toString(), txHash);
         } else {
-            console.log(` Already in DB, skipping.`);
+            console.log(`Already in DB, skipping.`);
         }
     } catch (err) {
-        console.error(`  DB Error (LockInitiated): ${err.message}`);
+        console.error(`DB Error (LockInitiated): ${err.message}`);
     }
 }
 
