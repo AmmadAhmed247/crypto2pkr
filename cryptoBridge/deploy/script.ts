@@ -21,7 +21,7 @@ export default async function (hre: HardhatRuntimeEnvironment) {
     
     const whitelistedTokens = [
         "0x0000000000000000000000000000000000000000",
-        "0x3e7676937a7e96cfb7616f215b9422211356e21e" 
+        "0xAe045DE5638162fa134807Cb558E15A3F5A7F853" 
     ];
 
     console.log("Deploying CryptoPkr to zkSync...");

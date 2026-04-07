@@ -13,6 +13,8 @@ const STATE_FILE = path.resolve("./relay-state.json");
 const provider = new Provider("https://sepolia.era.zksync.dev");
 const contract  = new Contract(process.env.CONTRACT_ADDRESS, vaultABI.abi, provider);
 
+const usdToPkr=process.env.PKR_RATE;
+
 
 function loadLastBlock(fallback) {
     try {
@@ -63,6 +65,9 @@ function formatTokenAmount(amount, token) {
     return ethers.formatUnits(amount, 6); 
 }
 
+
+
+
 function getTokenSymbol(token) {
     if (token === ethers.ZeroAddress) return "ETH";
     if (token.toLowerCase() === process.env.USDC_ADDRESS?.toLowerCase()) return "USDC";
@@ -78,12 +83,10 @@ async function handleLockInitiated(event) {
     const formattedAmount = formatTokenAmount(amount, token);
     let pkrAmount;
     if (tokenSymbol === "USDC" || tokenSymbol === "USDT") {
-        const usdToPkr = 282; // your rate
         pkrAmount = (parseFloat(formattedAmount) * usdToPkr).toFixed(2);
     } else {
-    
         const cryptoPriceInUsd = await getPriceFromBinance("ETH");
-        const usdToPkr = 282;
+       
         pkrAmount = (parseFloat(formattedAmount) * cryptoPriceInUsd * usdToPkr).toFixed(2);
     }
 

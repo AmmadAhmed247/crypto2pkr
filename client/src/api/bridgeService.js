@@ -4,7 +4,9 @@ import vaultAbi from '../utils/abi.json';
 
 const ERC20_ABI = [
   "function approve(address spender, uint256 amount) public returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)"
 ];
 
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;

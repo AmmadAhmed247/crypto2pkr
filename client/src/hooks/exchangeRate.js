@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
-const USD_TO_PKR = 280;
+const USD_TO_PKR = 282;
 
 export const useExchangeRate = (symbol) => {
   return useQuery({

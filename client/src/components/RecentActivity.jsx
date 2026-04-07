@@ -79,7 +79,9 @@ const RecentActivity = ({ address, txFilter }) => {
   console.log('PKR:', userTransactions?.totalPkr);
   console.log('USD:', userTransactions?.totalUsd);
 
-  const fmt = (d) => new Date(d).toLocaleDateString("en-US", { day: "numeric", year: "numeric", month: "short" })
+  const fmt = (d) => new Date(d).toLocaleDateString("en-US", { day: "numeric", year: "numeric", month: "short" });
+
+
 
   const heads = ["Address", "Amount", "PKR Value", "Raast ID", "Status", "Type", "Lock TxHash", "Payout TxHash", "Date"].filter(Boolean);
   if (isLoading) return <div className="py-16 text-center text-green-300">Fetching history...</div>;

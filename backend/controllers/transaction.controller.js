@@ -38,42 +38,41 @@ export const getAccountStats = async (req, res) => {
     try {
         const { address } = req.params;
         const userAddr = address.toLowerCase();
-        const stats = await Transaction.aggregate([
-            { $match: { userAddress: userAddr } },
-            {
-                $group: {
-                    _id: null,
-                    totalBridged: { 
-                        $sum: { $toDouble: { $replaceAll: { input: "$pkrAmount", find: ",", replacement: "" } } } 
-                    },
-                    totalCrypto: { $sum: { $toDouble: "$lockedAmount" } },
-                    totalClaiming: {
-                        $sum: {
-                            $cond: [{ $eq: ["$status", "LOCKED"] }, { $toDouble: { $replaceAll: { input: "$pkrAmount", find: ",", replacement: "" } } }, 0]
-                        }
-                    },
-                    totalReceived: {
-                        $sum: {
-                            $cond: [{ $eq: ["$type", "RECEIVED"] }, { $toDouble: "$lockedAmount" }, 0]
-                        }
-                    },
-                    txCount: { $sum: 1 }
-                }
-            }
-        ]);
+        const transactions = await Transaction.find({ userAddress: userAddr });
+        let totalBridgedPKR = 0;
+        let totalClaimingPKR = 0;
+        
+        let volumes = {
+            eth: 0,
+            usdc: 0,
+            usdt: 0
+        };
+        transactions.forEach(tx => {
+            const pkr = parseFloat(tx.pkrAmount?.toString().replace(/,/g, '') || 0);
+            totalBridgedPKR += pkr;
+            const symbol = tx.tokenSymbol?.toLowerCase(); 
+            const cryptoAmt = parseFloat(tx.lockedAmount || 0);
 
-        const result = stats[0] || { totalBridged: 0, totalCrypto: 0, totalClaiming: 0, totalReceived: 0, txCount: 0 };
+            if (symbol && volumes.hasOwnProperty(symbol)) {
+                volumes[symbol] += cryptoAmt;
+            }
+
+            if (tx.status === "LOCKED") {
+                totalClaimingPKR += pkr;
+            }
+        });
 
         res.status(200).json({
             success: true,
             data: {
-                totalBridged: result.totalBridged.toLocaleString("en-US", { minimumFractionDigits: 2 }),
-                totalCrypto: result.totalCrypto.toFixed(4),
-                totalClaiming: result.totalClaiming.toLocaleString("en-US", { minimumFractionDigits: 2 }),
-                receivedVolume: result.totalReceived.toFixed(4),
-                count: result.txCount
+                totalBridged: totalBridgedPKR.toLocaleString("en-US", { minimumFractionDigits: 2 }),
+                totalClaiming: totalClaimingPKR.toLocaleString("en-US", { minimumFractionDigits: 2 }),
+                ethTotal: volumes.eth.toFixed(4),
+                usdcTotal: volumes.usdc.toFixed(2),
+                count: transactions.length
             }
         });
+
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

@@ -30,7 +30,10 @@ export default function BridgeComponent() {
     enabled: !!address && isAuthenticated && isCorrectNetwork,
     refetchInterval: 1000,
   });
-
+  const getCurrentBalance=()=>{
+    const symbol=selectedCrypto.toLowerCase()
+    return balance[symbol] || "0.00"
+  }
   const handleConnect = () => isAuthenticated ? linkWallet() : login();
 
   const handleSwitchNetwork = async () => {
@@ -141,7 +144,7 @@ export default function BridgeComponent() {
     <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
       <div className="flex justify-between mb-3 text-sm">
         <label className="font-medium text-zinc-700">From</label>
-        <span className="text-zinc-500">Balance: {balance} {selectedCrypto}</span>
+        <span>Balance: {getCurrentBalance()} {selectedCrypto}</span>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -181,7 +184,7 @@ export default function BridgeComponent() {
         {['0.001', '0.01', '0.1', 'Max'].map(v => (
           <button 
             key={v} 
-            onClick={() => handleChangeAmount(v === 'Max' ? balance : v)} 
+            onClick={() => handleChangeAmount(v === 'Max' ? getCurrentBalance() : v)} 
             className="flex-1 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:bg-zinc-900 hover:text-white transition-colors"
           >
             {v}

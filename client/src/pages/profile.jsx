@@ -68,7 +68,10 @@ export default function Dashboard() {
 
   const { data: exchangeRate = 0 } = useExchangeRate("ETH");
   const amount = exchangeRate * balance;
-  const formatted = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pkrRate=import.meta.env.VITE_PKR_RATE;
+  console.log(`pkr rate$${pkrRate}`);
+  
+  const usdBalance=(balance.usdc * pkrRate).toLocaleString(2);
 
   const { data: userAnalytics, isLoading } = useQuery({
     queryKey: ["userAnalytics", address],
@@ -83,9 +86,9 @@ export default function Dashboard() {
 
   const analytics = userAnalytics?.data;
   const STATS = [
-    { label: "Total Bridged",  value: `PKR ${analytics?.totalBridged  ?? "0.00"}`, pkr: `${analytics?.totalCrypto  ?? "0.00"} ETH`, accent: "border-l-green-500"  },
-    { label: "Total Received", value: `${analytics?.receivedVolume    ?? "0.00"} ETH`, pkr: "On Chain",          accent: "border-l-emerald-400" },
-    { label: "Claimable",      value: `${analytics?.totalClaiming     ?? "0.00"} ETH`, pkr: "Pending claims",    accent: "border-l-teal-400"    },
+    { label: "Total Bridged",  value: `PKR ${analytics?.totalBridged  ?? "0.00"}`, pkr: `${analytics?.usdcTotal ?? "0.00"} USDC`, accent: "border-l-green-500"  },
+    { label: "Total Received", value: `${analytics?.receivedVolume    ?? "0.00"} USDC`, pkr: "On Chain",          accent: "border-l-emerald-400" },
+    { label: "Claimable",      value: `${analytics?.totalClaiming     ?? "0.00"} PKR`, pkr: "Pending claims",    accent: "border-l-teal-400"    },
     { label: "Transactions",   value:  analytics?.count               ?? 0,            pkr: "Total transactions", accent: "border-l-cyan-400"   },
   ];
 
@@ -240,7 +243,6 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        {/* ── Main — full width on mobile since sidebar is out of flow ── */}
         <main className="w-full md:flex-1 flex flex-col overflow-auto min-w-0">
 
           {/* Header */}
@@ -295,8 +297,8 @@ export default function Dashboard() {
                     </div>
                     <div className="sm:text-right">
                       <p className="text-xs uppercase tracking-widest text-green-300 mb-1">Total Balance</p>
-                      <p className="text-3xl sm:text-4xl font-extrabold">{balance}</p>
-                      <p className="text-base sm:text-lg text-green-300 mt-1">{formatted} <span className="text-white">PKR</span></p>
+                      <p className="text-3xl sm:text-4xl font-extrabold">{balance.usdc}</p>
+                      <p className="text-base sm:text-lg text-green-300 mt-1">{usdBalance} <span className="text-white">PKR</span></p>
                     </div>
                   </div>
                 </div>
