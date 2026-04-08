@@ -10,7 +10,8 @@ import { useBridgeLogic } from "../hooks/bridgeLogic";
 import axios from "axios";
 import { useExchangeRate } from "../hooks/exchangeRate";
 import { formatEther, ZeroAddress } from "ethers";
-import { fetchAllWithdrawals, refundUserFunds } from "../api/bridgeService.js";
+import { fetchAllWithdrawals } from "../utils/contractRead.js";
+import{refundUserFunds} from "../utils/contractWrites.js"
 
 const Animations = () => (
   <style>{`
@@ -80,6 +81,7 @@ export default function Dashboard() {
       return res.data;
     },
     enabled: !!address,
+    refetchInterval:1000,
   });
 
   const handleLogout = () => { logout(); navigate("/"); };

@@ -1,5 +1,5 @@
 import React from 'react'
-import { refundUserFunds } from '../api/bridgeService'
+import { refundUserFunds } from '../utils/contractWrites.js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import{usePrivy  , useWallets} from "@privy-io/react-auth"
 const RefundSection = ({ pendingTimeStamps }) => {

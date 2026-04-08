@@ -4,7 +4,8 @@ import { useExchangeRate } from '../hooks/exchangeRate';
 import { useQuery } from '@tanstack/react-query';
 import { TokenETH, TokenUSDT, TokenUSDC } from '@web3icons/react';
 import RefundSection from '../components/RefundSection.jsx';
-import { fetchPendingStatus, getTokenBalance, switchToZkSyncSepolia, isOnZkSyncSepolia } from '../api/bridgeService.js';
+import{ switchToZkSyncSepolia , isOnZkSyncSepolia } from "../utils/contractHelpers.js"
+import{fetchPendingStatus} from "../utils/contractRead.js"
 import { useBridgeLogic } from '../hooks/bridgeLogic.js';
 import { useUser } from '../context/userContext.jsx';
 

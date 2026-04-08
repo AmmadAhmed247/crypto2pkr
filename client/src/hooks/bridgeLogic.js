@@ -1,7 +1,7 @@
 import { useUser } from "../context/userContext";
 import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { lockUserFund } from "../api/bridgeService";
+import { lockUserFund } from "../utils/contractWrites";
 
 
 export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
