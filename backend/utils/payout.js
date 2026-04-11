@@ -10,14 +10,10 @@ const PAYOUT_DELAY_MS = 10_000;
 
 export const simulatedBankPayout = async (userAddress, requestId, txHash) => {
     console.log(`Payout queued | User: ${userAddress} | RequestID: ${requestId}`);
-
     await new Promise(resolve => setTimeout(resolve, 2000));
-
     try {
         console.log(`Processing Payout | User: ${userAddress} | RequestID: ${requestId}`);
-
         const withdrawal = await contract.withdrawals(userAddress, requestId);
-
         if (!withdrawal || withdrawal.amount === 0n || withdrawal.isProcessed) {
             console.log(`Skipping: already processed or invalid | RequestID: ${requestId}`);
             return;

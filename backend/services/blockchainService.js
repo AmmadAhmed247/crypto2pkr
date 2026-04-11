@@ -9,24 +9,28 @@ import axios from "axios"
 
 const POLL_INTERVAL_MS  = 5_000; 
 const BLOCK_CHUNK_SIZE  = 500;     
-const STATE_FILE = path.resolve("./relay-state.json");
+const STATE_FILE=path.resolve("./relay-state.json");
 const provider = new Provider("https://sepolia.era.zksync.dev");
 const contract  = new Contract(process.env.CONTRACT_ADDRESS, vaultABI.abi, provider);
 
 const usdToPkr=process.env.PKR_RATE;
 
 
-function loadLastBlock(fallback) {
+function loadLastBlock(fallback){
     try {
         const data = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
         const block = parseInt(data.lastBlock, 10);
+
         console.log(`Resuming from saved block: ${block}`);
-        return isNaN(block) ? fallback : block;
-    } catch {
+        return Number.isFinite(block) ? block : fallback;
+
+    } catch (error) {
         console.log(`No saved state found — starting from block ${fallback}`);
         return fallback;
     }
 }
+
+
 
 function saveLastBlock(block) {
     try {
@@ -35,6 +39,7 @@ function saveLastBlock(block) {
         console.error("Failed to save lastBlock state:", err.message);
     }
 }
+
 
 async function getPriceFromBinance(tokenSymbol) {
     try {
@@ -58,12 +63,16 @@ const buildTxDoc = (user, requestId, token, amount, raastId, txHash , pkrAmount)
     type:"BRIDGE",
     pkrAmount:pkrAmount
 });
+
+// becasue right now i am only using eth and usdc or usdt so (6 decimal for that)..
+
 function formatTokenAmount(amount, token) {
     if (token === ethers.ZeroAddress) {
         return ethers.formatEther(amount); 
     }
     return ethers.formatUnits(amount, 6); 
 }
+
 
 
 
@@ -78,15 +87,13 @@ function getTokenSymbol(token) {
 async function handleLockInitiated(event) {
     const [user, requestId, token, amount, raastId] = event.args;
     const txHash = event.transactionHash;
-
     const tokenSymbol = getTokenSymbol(token);
     const formattedAmount = formatTokenAmount(amount, token);
     let pkrAmount;
     if (tokenSymbol === "USDC" || tokenSymbol === "USDT") {
         pkrAmount = (parseFloat(formattedAmount) * usdToPkr).toFixed(2);
     } else {
-        const cryptoPriceInUsd = await getPriceFromBinance("ETH");
-       
+        const cryptoPriceInUsd = await getPriceFromBinance("ETH"); 
         pkrAmount = (parseFloat(formattedAmount) * cryptoPriceInUsd * usdToPkr).toFixed(2);
     }
 
@@ -128,9 +135,9 @@ async function handlePayoutConfirmed(event) {
         );
 
         if (result) {
-            console.log(`  DB updated to PAID.`);
+            console.log(`DB updated to PAID.`);
         } else {
-            console.warn(` No matching TX found in DB for user=${user} requestId=${requestId}`);
+            console.warn(`No matching TX found in DB for user=${user} requestId=${requestId}`);
         }
     } catch (err) {
         console.error(` DB Error (PayoutConfirmed): ${err.message}`);
@@ -140,16 +147,13 @@ async function handlePayoutConfirmed(event) {
 async function handleClaim(event) {
     const [user, requestId, _token, _amount] = event.args;
     const txHash = event.transactionHash;
-
     console.log(`[RefundClaimed] tx=${txHash} | user=${user} | requestId=${requestId}`);
-
     try {
         const result = await Transaction.findOneAndUpdate(
             { userAddress: user.toLowerCase(), requestId: requestId.toString() }, 
             { status: "CLAIMED", claimTxHash: txHash },                           
             { new: true }
         );
-
         if (result) {
             console.log(`DB updated to CLAIMED.`);
         } else {

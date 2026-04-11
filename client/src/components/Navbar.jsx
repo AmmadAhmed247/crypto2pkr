@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Menu, LogOut, User as UserIcon, BringToFront, X ,Copy , } from "lucide-react"
+import { Menu, LogOut, User as UserIcon, BringToFront, X, Copy } from "lucide-react"
 import MobileOptions from './MobileOptions.jsx'
 import { useUser } from "../context/userContext"
 
-const Navbar = () => {
-  const [isopen, setIsOpen] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const { isAuthenticated, logout, address, wallet } = useUser();
+export default function Navbar() {
+  const [isOpen, setIsOpen]   = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [copied, setCopied]   = useState(false);
+  const { isAuthenticated, logout, address } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    const fn = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
   }, []);
 
-  const handleDisconnect = () => {
-    logout();
-    navigate("/");
-  };
+  const handleDisconnect = () => { logout(); navigate('/'); };
 
   const copy = () => {
     navigator.clipboard.writeText(address);
@@ -28,206 +25,200 @@ const Navbar = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const scrolled = scrollY > 40;
-
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500&display=swap');
-        .nav-root {
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
+        .nb-root {
           position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-          font-family: 'Syne', sans-serif;
-          transition: all 0.4s ease;
+          transition: background 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
         }
-        .nav-root.scrolled {
-          background: rgba(240,253,244,0.92);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid #dcfce7;
-          box-shadow: 0 2px 20px rgba(20,83,45,0.06);
-        }
-        .nav-root.top {
+        .nb-root.at-top {
           background: transparent;
+          border-bottom: 1px solid transparent;
         }
-        .nav-inner {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 48px;
-          height: 72px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
+        .nb-root.scrolled {
+          background: rgba(248,253,249,0.88);
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
+          border-bottom: 1px solid rgba(187,247,208,0.6);
+          box-shadow: 0 2px 24px rgba(20,83,45,0.06);
         }
-        .nav-logo {
-          display: flex; align-items: center; gap: 10px;
-          text-decoration: none;
+
+        .nb-inner {
+          max-width: 1300px; margin: 0 auto;
+          padding: 0 clamp(20px,5vw,72px);
+          height: 68px;
+          display: flex; align-items: center; justify-content: space-between; gap: 24px;
         }
-        .nav-logo-icon {
-          width: 34px; height: 34px;
-          background: #14532d;
-          border-radius: 9px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
+
+        /* LOGO */
+        .nb-logo {
+          display: flex; align-items: center; gap: 9px;
+          text-decoration: none; flex-shrink: 0;
+          font-family: 'Fraunces', Georgia, serif;
+          font-style: italic; font-weight: 600;
+          font-size: 20px; color: #14532d; letter-spacing: -0.03em;
         }
-        .nav-logo-text {
-          font-size: 17px; font-weight: 800;
-          color: #14532d; letter-spacing: -0.02em;
+        .nb-logo span { color: #4ade80; font-style: normal; }
+
+        /* CENTER LINKS */
+        .nb-links {
+          display: flex; align-items: center; gap: 8px;
+          flex: 1; justify-content: center;
         }
-        .nav-links {
-          display: flex; align-items: center; gap: 36px;
+        .nb-link {
+          font-family: 'Instrument Sans', sans-serif;
+          font-size: 13px; font-weight: 500;
+          color: #166534; opacity: 0.6;
+          text-decoration: none; padding: 6px 14px; border-radius: 99px;
+          transition: all 0.2s ease;
         }
-        .nav-link {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px; font-weight: 500;
-          color: #166534; opacity: 0.7;
-          text-decoration: none;
-          transition: opacity 0.2s;
-        }
-        .nav-link:hover { opacity: 1; }
-        .nav-actions {
-          display: flex; align-items: center; gap: 10px;
-        }
-        .btn-launch {
-          background: #14532d; color: white;
-          border: none; padding: 10px 22px;
-          border-radius: 100px;
-          font-family: 'Syne', sans-serif;
-          font-size: 13px; font-weight: 700;
-          cursor: pointer; text-decoration: none;
+        .nb-link:hover { opacity: 1; background: rgba(22,163,74,0.06); }
+
+        /* ADDRESS PILL */
+        .nb-addr {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px; font-weight: 500;
+          color: #16a34a; background: #f0fdf4;
+          border: 1.5px solid #dcfce7;
+          padding: 6px 13px; border-radius: 99px;
           display: inline-flex; align-items: center; gap: 6px;
-          transition: all 0.3s ease;
-          letter-spacing: -0.01em;
+          cursor: pointer; transition: all 0.2s ease;
+          letter-spacing: 0.01em;
         }
-        .btn-launch:hover {
+        .nb-addr:hover { border-color: #86efac; background: #dcfce7; }
+        .nb-addr.copied { border-color: #4ade80; background: #dcfce7; color: #14532d; }
+
+        /* ACTIONS */
+        .nb-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+        .nb-btn {
+          font-family: 'Instrument Sans', sans-serif;
+          font-size: 13px; font-weight: 600;
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 9px 18px; border-radius: 99px;
+          text-decoration: none; cursor: pointer;
+          transition: all 0.28s cubic-bezier(0.16,1,0.3,1);
+          white-space: nowrap;
+        }
+        .nb-btn-solid {
+          background: #14532d; color: white; border: none;
+        }
+        .nb-btn-solid:hover {
           background: #166534;
-          transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(20,83,45,0.25);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(20,83,45,0.28);
         }
-        .btn-outline {
+        .nb-btn-ghost {
           background: white; color: #14532d;
           border: 1.5px solid #bbf7d0;
-          padding: 9px 18px; border-radius: 100px;
-          font-family: 'Syne', sans-serif;
-          font-size: 13px; font-weight: 700;
-          cursor: pointer; text-decoration: none;
-          display: inline-flex; align-items: center; gap: 6px;
-          transition: all 0.3s ease;
         }
-        .btn-outline:hover {
+        .nb-btn-ghost:hover {
           border-color: #14532d;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 16px rgba(20,83,45,0.1);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(20,83,45,0.1);
         }
-        .btn-danger {
+        .nb-btn-danger {
           background: transparent; color: #dc2626;
           border: 1.5px solid #fecaca;
-          padding: 9px 16px; border-radius: 100px;
-          font-family: 'Syne', sans-serif;
-          font-size: 13px; font-weight: 700;
-          cursor: pointer;
-          display: inline-flex; align-items: center; gap: 6px;
-          transition: all 0.3s ease;
         }
-        .btn-danger:hover {
-          background: #fef2f2;
-          border-color: #dc2626;
-          transform: translateY(-1px);
+        .nb-btn-danger:hover {
+          background: #fef2f2; border-color: #dc2626;
+          transform: translateY(-2px);
         }
-        .addr-pill {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 12px; font-weight: 500;
-          color: #16a34a; background: #f0fdf4;
-          border: 1px solid #dcfce7;
-          padding: 6px 12px; border-radius: 100px;
-          letter-spacing: 0.02em;
+
+        /* HAMBURGER */
+        .nb-hamburger {
+          display: none; background: none; border: none;
+          color: #14532d; cursor: pointer; padding: 6px;
+          border-radius: 8px; transition: background 0.2s;
         }
-        /* Mobile */
-        .mob-menu-btn {
-          background: none; border: none; cursor: pointer;
-          color: #14532d; padding: 4px;
-          display: none;
-        }
-        .mob-launch {
-          display: none;
-        }
+        .nb-hamburger:hover { background: rgba(22,163,74,0.08); }
+
+        /* MOB LAUNCH (shown only on mobile when not authed) */
+        .nb-mob-launch { display: none; }
+
         @media (max-width: 768px) {
-          .nav-inner { padding: 0 20px; }
-          .nav-links { display: none; }
-          .nav-actions { display: none; }
-          .mob-menu-btn { display: flex; }
-          .mob-launch { display: inline-flex; }
+          .nb-links   { display: none; }
+          .nb-actions { display: none; }
+          .nb-hamburger { display: flex; }
+          .nb-mob-launch { display: inline-flex; }
         }
       `}</style>
-      <nav className={`nav-root ${scrolled ? 'scrolled' : 'top'}`}>
-        <div className="nav-inner">
 
+      <nav className={`nb-root ${scrolled ? 'scrolled' : 'at-top'}`}>
+        <div className="nb-inner">
 
-          <button className="mob-menu-btn" onClick={() => setIsOpen(!isopen)}>
-            {isopen ? <X size={22} /> : <Menu size={22} />}
+          {/* Hamburger — mobile left */}
+          <button className="nb-hamburger" onClick={() => setIsOpen(o => !o)} aria-label="Menu">
+            {isOpen ? <X size={21}/> : <Menu size={21}/>}
           </button>
 
-
-          <Link to="/" className="nav-logo">
-            <img src="l2.png" className='w-30' alt="" />
+          {/* Logo — center on mobile, left on desktop */}
+          <Link to="/" className="nb-logo">
+            <img className='w-20' src="l2.png" alt="" />
           </Link>
 
+          {/* Center nav links */}
+          <div className="nb-links">
+            <Link to="/contact" className="nb-link">Contact</Link>
+            <Link to="/about"   className="nb-link">About</Link>
 
-          <div className="nav-links">
-            <Link to="/contact" className="nav-link">Contact</Link>
-            <Link to="/about" className="nav-link">About</Link>
+            {/* Address pill — sits in center on desktop */}
             {address && (
-              <button onClick={copy} className={`addr-pill ${copied ? 'bg-green-100 border-green-500' : ''}`}>
+              <button onClick={copy} className={`nb-addr ${copied ? 'copied' : ''}`}>
                 {copied ? (
-                  <span className="text-green-700 font-bold">Copied</span>
+                  <span style={{ fontFamily:'Instrument Sans', fontWeight:600, fontSize:11 }}>✓ Copied</span>
                 ) : (
-                  <div className="flex flex-row items-center">
-
-                    {address.slice(0, 6)}…{address.slice(-4)}
-                    <span className="ml-2 text-xs opacity-50"><Copy size={15} /></span>
-                  </div>
-                 
+                  <>
+                    {address.slice(0,6)}…{address.slice(-4)}
+                    <Copy size={12} style={{ opacity:0.45 }}/>
+                  </>
                 )}
               </button>
             )}
-
-
           </div>
 
-
-          <div className="nav-actions">
+          {/* Right actions */}
+          <div className="nb-actions">
             {isAuthenticated ? (
               <>
-                <Link to="/launch" className="btn-outline">
-                  <BringToFront size={14} />
-                  Bridge
+                <Link to="/launch"  className="nb-btn nb-btn-ghost">
+                  <BringToFront size={13}/> Bridge
                 </Link>
-                <Link to="/profile" className="btn-outline">
-                  <UserIcon size={14} />
-                  Dashboard
+                <Link to="/profile" className="nb-btn nb-btn-ghost">
+                  <UserIcon size={13}/> Dashboard
                 </Link>
-                <button onClick={handleDisconnect} className="btn-danger">
-                  <LogOut size={14} />
-                  Disconnect
+                <button onClick={handleDisconnect} className="nb-btn nb-btn-danger">
+                  <LogOut size={13}/> Disconnect
                 </button>
               </>
             ) : (
-              <Link to="/launch" className="btn-launch">
+              <Link to="/launch" className="nb-btn nb-btn-solid">
                 Launch App
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                </svg>
               </Link>
             )}
           </div>
 
+          {/* Mobile: show launch button only when not authed */}
           {!isAuthenticated && (
-            <Link to="/launch" className="btn-launch mob-launch" style={{ fontSize: 12, padding: '8px 16px' }}>
+            <Link to="/launch" className="nb-btn nb-btn-solid nb-mob-launch" style={{ fontSize:12, padding:'8px 16px' }}>
               Launch
             </Link>
           )}
+
         </div>
       </nav>
-      <div style={{ height: 72 }} />
-      <MobileOptions onClose={() => setIsOpen(false)} open={isopen} />
+
+   
+      <div style={{ height: 68 }}/>
+
+      <MobileOptions onClose={() => setIsOpen(false)} open={isOpen}/>
     </>
   );
-};
-
-export default Navbar;
+}

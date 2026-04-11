@@ -21,7 +21,6 @@ export const confirmOnChainPayout = async (userAddress, requestId) => {
     }
 };
 
-
 export const getPendingWithdrawals = async (req, res) => {
     try {
         const { userAddress } = req.body;
@@ -30,6 +29,7 @@ export const getPendingWithdrawals = async (req, res) => {
         }
         const addr = userAddress.toLowerCase();
         const counter = await contract.userRequestCounter(addr);
+        console.log(`counter...${counter}`);
 
         if (counter === 0n) {
             return res.status(200).json({ isPending: false, timestamp: null });

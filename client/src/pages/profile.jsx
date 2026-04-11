@@ -2,108 +2,147 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import SendModal from "../components/SendModal";
 import ReceiveModal from "../components/ReceiveModal";
-import { Menu, LayoutDashboard, BadgeCheck, Stone, Verified, LogOut, X } from "lucide-react";
+import { Menu, LayoutDashboard, BadgeCheck, LogOut, X, ArrowUpRight, ArrowDownLeft, Copy, Check, RefreshCw, Clock, ChevronRight, Zap } from "lucide-react";
 import { useUser } from "../context/userContext";
 import RecentActivity from "../components/RecentActivity";
 import { useQuery } from "@tanstack/react-query";
 import { useBridgeLogic } from "../hooks/bridgeLogic";
 import axios from "axios";
 import { useExchangeRate } from "../hooks/exchangeRate";
-import { formatEther, ZeroAddress } from "ethers";
+import { formatEther, formatUnits, ZeroAddress } from "ethers";
 import { fetchAllWithdrawals } from "../utils/contractRead.js";
-import{refundUserFunds} from "../utils/contractWrites.js"
+import { refundUserFunds } from "../utils/contractWrites.js";
 
-const Animations = () => (
+const GlobalStyles = () => (
   <style>{`
-    .mono { font-family: 'Roboto Mono', 'Courier New', monospace !important; }
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.35} }
-    @keyframes slide-up  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes fade-in   { from{opacity:0} to{opacity:1} }
-    @keyframes shimmer   { 0%{background-position:200%} 100%{background-position:-200%} }
-    .animate-slide-up  { animation: slide-up .28s ease both; }
-    .animate-fade-in   { animation: fade-in .2s ease both; }
-    .pulse-dot         { animation: pulse-dot 2s infinite; }
-    .shimmer-bar       { background:linear-gradient(90deg,#bbf7d0 25%,#6ee7b7 50%,#bbf7d0 75%);background-size:200%;animation:shimmer 1.4s infinite; }
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    .f-serif { font-family: 'Fraunces', Georgia, serif; }
+    .f-sans  { font-family: 'Instrument Sans', sans-serif; }
+    .f-mono  { font-family: 'JetBrains Mono', monospace; }
+
+    @keyframes pulse-glow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.55); }
+      55%      { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+    }
+    .pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
+
+    @keyframes spin-slow { to { transform: rotate(360deg); } }
+    .spin-slow { animation: spin-slow 1s linear infinite; }
+
+    @keyframes fade-up {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-up { animation: fade-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+
+    @keyframes count-flash { 0%,100%{opacity:1} 40%{opacity:0.4} }
+    .count-flash { animation: count-flash 2s ease-in-out infinite; }
+
+    .sidebar-link {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; border-radius:12px;
+      font-family:'Instrument Sans',sans-serif; font-weight:500; font-size:13.5px;
+      cursor:pointer; border:none; background:transparent; width:100%;
+      text-align:left; transition:all 0.2s ease; color:#2d4a30;
+    }
+    .sidebar-link:hover { background:rgba(22,163,74,0.07); color:#14532d; }
+    .sidebar-link.active {
+      background:#14532d; color:white;
+      box-shadow: 0 4px 14px rgba(20,83,45,0.25);
+    }
+    .sidebar-link.active svg { opacity:1; }
+
+    .stat-card {
+      background:white; border:1.5px solid #dcfce7; border-radius:20px;
+      padding:22px 24px; transition:all 0.3s cubic-bezier(0.16,1,0.3,1);
+      position:relative; overflow:hidden;
+    }
+    .stat-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(22,100,52,0.1); border-color:#bbf7d0; }
+
+    .claim-row {
+      background:white; border:1.5px solid #dcfce7; border-radius:18px;
+      padding:16px 20px; display:flex; align-items:center; gap:14px;
+      transition:all 0.25s ease;
+    }
+    .claim-row:hover { border-color:#86efac; box-shadow:0 8px 24px rgba(22,100,52,0.08); }
+    .claim-row.locked { background:#fffbeb; border-color:#fde68a; }
+
+    .filter-pill {
+      font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600;
+      padding:6px 14px; border-radius:99px; cursor:pointer; border:1.5px solid transparent;
+      transition:all 0.2s ease; white-space:nowrap;
+    }
+    .filter-pill.on  { background:#14532d; color:white; }
+    .filter-pill.off { background:white; color:#166534; border-color:#dcfce7; }
+    .filter-pill.off:hover { border-color:#86efac; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#bbf7d0; border-radius:99px; }
   `}</style>
 );
 
-const NAV = [
-  { id: "overview",     icon: <LayoutDashboard size={17} />, label: "Overview" },
-  { id: "transactions", icon: <Menu size={17} />,            label: "Transactions" },
-  { id: "claims",       icon: <BadgeCheck size={17} />,      label: "Claims" },
-];
 
-const fmt   = (d) => new Date(d).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" });
-const trunc = (a) => a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "—";
-
-function Countdown({ secondsLeft: initial }) {
-  const [secs, setSecs] = useState(initial);
-
+function Countdown({ secondsLeft: init }) {
+  const [secs, setSecs] = useState(init);
   useEffect(() => {
     if (secs <= 0) return;
     const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, []);
-
-  const h = String(Math.floor(secs / 3600)).padStart(2, "0");
-  const m = String(Math.floor((secs % 3600) / 60)).padStart(2, "0");
-  const s = String(secs % 60).padStart(2, "0");
-
-  return (
-    <span className="font-mono text-amber-500 text-xs tabular-nums">
-      {h}:{m}:{s}
-    </span>
-  );
+  const h = String(Math.floor(secs / 3600)).padStart(2,'0');
+  const m = String(Math.floor((secs % 3600) / 60)).padStart(2,'0');
+  const s = String(secs % 60).padStart(2,'0');
+  return <span className="f-mono text-amber-500 text-xs count-flash">{h}:{m}:{s}</span>;
 }
 
+const trunc = a => a ? `${a.slice(0,6)}…${a.slice(-4)}` : '—';
+const fmt   = d => new Date(d).toLocaleDateString('en-PK',{ day:'numeric', month:'short', year:'numeric' });
+
+const NAV = [
+  { id:'overview',     icon:<LayoutDashboard size={15}/>, label:'Overview'     },
+  { id:'transactions', icon:<Menu size={15}/>,            label:'Transactions' },
+  { id:'claims',       icon:<BadgeCheck size={15}/>,      label:'Claims'       },
+];
+
 export default function Dashboard() {
-  const [tab, setTab]           = useState("overview");
+  const [tab, setTab]           = useState('overview');
   const [showSend, setShowSend] = useState(false);
   const [showRec, setShowRec]   = useState(false);
   const [copied, setCopied]     = useState(false);
-  const [txFilter, setTxFilter] = useState("all");
+  const [txFilter, setTxFilter] = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   const { address, isAuthenticated, email, balance, wallets, logout } = useUser();
+  const { data: exchangeRate = 0 } = useExchangeRate('ETH');
+  const pkrRate  = import.meta.env.VITE_PKR_RATE;
+  const usdBalance = (balance.usdc * pkrRate).toLocaleString(2);
 
-  const { data: exchangeRate = 0 } = useExchangeRate("ETH");
-  const amount = exchangeRate * balance;
-  const pkrRate=import.meta.env.VITE_PKR_RATE;
-  console.log(`pkr rate$${pkrRate}`);
-  
-  const usdBalance=(balance.usdc * pkrRate).toLocaleString(2);
-
-  const { data: userAnalytics, isLoading } = useQuery({
-    queryKey: ["userAnalytics", address],
+  const { data: userAnalytics } = useQuery({
+    queryKey: ['userAnalytics', address],
     queryFn: async () => {
       const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/user/analytics/${address}`);
       return res.data;
     },
     enabled: !!address,
-    refetchInterval:1000,
+    refetchInterval: 4000,
   });
-
-  const handleLogout = () => { logout(); navigate("/"); };
-
   const analytics = userAnalytics?.data;
-  const STATS = [
-    { label: "Total Bridged",  value: `PKR ${analytics?.totalBridged  ?? "0.00"}`, pkr: `${analytics?.usdcTotal ?? "0.00"} USDC`, accent: "border-l-green-500"  },
-    { label: "Total Received", value: `${analytics?.receivedVolume    ?? "0.00"} USDC`, pkr: "On Chain",          accent: "border-l-emerald-400" },
-    { label: "Claimable",      value: `${analytics?.totalClaiming     ?? "0.00"} PKR`, pkr: "Pending claims",    accent: "border-l-teal-400"    },
-    { label: "Transactions",   value:  analytics?.count               ?? 0,            pkr: "Total transactions", accent: "border-l-cyan-400"   },
-  ];
 
-  const user = {
-    email,
-    picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=pakflow",
-    wallet: address,
+  const handleLogout = () => { logout(); navigate('/'); };
+
+  const copy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  // Claims state
-  const [withdrawals, setWithdrawals]     = useState([]);
+  const [withdrawals, setWithdrawals]   = useState([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
-  const [claiming, setClaiming]           = useState({});
+  const [claiming, setClaiming]         = useState({});
 
   const claimableList  = withdrawals.filter(w => w.isClaimable);
   const pendingList    = withdrawals.filter(w => !w.isClaimable);
@@ -112,359 +151,378 @@ export default function Dashboard() {
   const loadWithdrawals = useCallback(async () => {
     if (!address || !wallets?.length) return;
     setLoadingClaims(true);
-    try {
-      const data = await fetchAllWithdrawals(address, wallets);
-      setWithdrawals(data);
-    } catch (e) {
-      console.error("Failed to load withdrawals:", e);
-    } finally {
-      setLoadingClaims(false);
-    }
+    try { setWithdrawals(await fetchAllWithdrawals(address, wallets)); }
+    catch(e) { console.error(e); }
+    finally { setLoadingClaims(false); }
   }, [address, wallets]);
 
-  useEffect(() => {
-    if (tab === "claims") loadWithdrawals();
-  }, [tab, loadWithdrawals]);
+  useEffect(() => { if (tab === 'claims') loadWithdrawals(); }, [tab, loadWithdrawals]);
 
   const handleClaim = async (requestId) => {
     setClaiming(c => ({ ...c, [requestId]: true }));
-    try {
-      await refundUserFunds(wallets, requestId);
-      await loadWithdrawals();
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setClaiming(c => ({ ...c, [requestId]: false }));
-    }
+    try { await refundUserFunds(wallets, requestId); await loadWithdrawals(); }
+    catch(e) { alert(e.message); }
+    finally { setClaiming(c => ({ ...c, [requestId]: false })); }
   };
+  const handleClaimAll = async () => { for (const w of claimableList) await handleClaim(w.requestId); };
+  const isSomeClaiming = Object.values(claiming).some(Boolean);
 
-  const handleClaimAll = async () => {
-    for (const w of claimableList) await handleClaim(w.requestId);
-  };
+  const handleTabChange = id => { setTab(id); setSidebarOpen(false); };
 
-  const copy = () => {
-    navigator.clipboard.writeText(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const STATS = [
+    { label:'Total Bridged',  val:`PKR ${analytics?.totalBridged ?? '0.00'}`,   sub:`${analytics?.usdcTotal ?? '0'} USDC`,   color:'#16a34a' },
+    { label:'Volume Received',val:`${analytics?.receivedVolume ?? '0.00'} USDC`, sub:'On-chain settled',                       color:'#0d9488' },
+    { label:'Pending Claims', val:`${analytics?.totalClaiming ?? '0.00'} PKR`,   sub:'Awaiting release',                      color:'#d97706' },
+    { label:'Transactions',   val: analytics?.count ?? 0,                         sub:'All time',                              color:'#6366f1' },
+  ];
 
-  const isSomeClaming = Object.values(claiming).some(Boolean);
-
-  // Close sidebar when tab changes on mobile
-  const handleTabChange = (id) => {
-    setTab(id);
-    setSidebarOpen(false);
-  };
+  const avatarSeed = email || address || 'user';
 
   return (
     <>
-      <Animations />
-      <div className="flex min-h-screen bg-green-50/40 relative">
+      <GlobalStyles />
 
-        {/* ── Mobile overlay ── */}
+      <div className="flex min-h-screen bg-[#f6fcf7] f-sans relative">
+
+        {/* ── mobile overlay ── */}
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/30 z-20 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/25 z-20 md:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
         )}
 
-        {/* ── Sidebar ── */}
-        {/* On mobile: fixed drawer that slides in over content (no flex contribution).
-            On md+:    sticky sidebar that participates in the flex row. */}
-        <aside
-          className={`
-            fixed top-0 left-0 h-screen z-30 w-64
-            bg-white border-r border-green-100
-            flex flex-col p-5 gap-2 overflow-y-auto
-            transition-transform duration-300 ease-in-out
-            md:sticky md:translate-x-0 md:w-60 md:shrink-0 md:z-auto
-            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-          `}
-        >
-          {/* Mobile close button */}
-          <div className="flex items-center justify-between mb-2 md:hidden">
-            <span className="text-sm font-bold text-green-900">Menu</span>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-            >
-              <X size={18} />
+        {/* ════════════════════════
+            SIDEBAR
+        ════════════════════════ */}
+        <aside className={`
+          fixed top-0 left-0 h-screen z-30 w-[220px]
+          flex flex-col
+          transition-transform duration-300 ease-in-out
+          md:sticky md:translate-x-0 md:shrink-0 md:z-auto
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `} style={{ background:'white', borderRight:'1.5px solid #dcfce7' }}>
+
+          {/* Logo */}
+          <div className="flex items-center justify-between px-5 pt-6 pb-5" style={{ borderBottom:'1px solid #f0fdf4' }}>
+            <Link to="/" className="f-serif italic font-semibold text-[19px] text-green-950" style={{ textDecoration:'none', letterSpacing:'-0.02em' }}>
+              rupia<span className="text-green-400 not-italic">.</span>
+            </Link>
+            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-green-400 hover:text-green-700 transition-colors p-1">
+              <X size={17}/>
             </button>
           </div>
 
-          <nav className="flex flex-col gap-1 flex-1">
+          {/* Nav */}
+          <nav className="flex flex-col gap-1 px-3 pt-4 flex-1">
             {NAV.map(n => (
-              <button
-                key={n.id}
-                onClick={() => handleTabChange(n.id)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative text-left
-                  ${tab === n.id
-                    ? "bg-green-600 text-white shadow-md shadow-green-200"
-                    : "text-gray-600 hover:bg-green-50 hover:text-green-700"}`}
-              >
-                <span className="text-base w-5 text-center">{n.icon}</span>
+              <button key={n.id} onClick={() => handleTabChange(n.id)}
+                className={`sidebar-link ${tab === n.id ? 'active' : ''}`}>
+                <span className={tab===n.id ? 'opacity-100':'opacity-50'}>{n.icon}</span>
                 {n.label}
-                {n.id === "claims" && claimableList.length > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {n.id === 'claims' && claimableList.length > 0 && (
+                  <span className="ml-auto text-[10px] font-bold bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center">
                     {claimableList.length}
                   </span>
                 )}
               </button>
             ))}
 
-            <div className="mt-4 pt-4 border-t border-green-100 flex flex-col gap-1">
-              <button
-                onClick={() => { setShowSend(true); setSidebarOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-green-50 hover:text-green-700 transition-all text-left"
-              >
-                <span className="w-5 text-center">↑</span> Send
+            <div className="mt-4 pt-4" style={{ borderTop:'1px solid #f0fdf4' }}>
+              <button onClick={() => { setShowSend(true); setSidebarOpen(false); }} className="sidebar-link">
+                <ArrowUpRight size={15} className="opacity-50"/> Send
               </button>
-              <button
-                onClick={() => { setShowRec(true); setSidebarOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-green-50 hover:text-green-700 transition-all text-left"
-              >
-                <span className="w-5 text-center">↓</span> Receive
+              <button onClick={() => { setShowRec(true); setSidebarOpen(false); }} className="sidebar-link">
+                <ArrowDownLeft size={15} className="opacity-50"/> Receive
               </button>
             </div>
           </nav>
 
-          <div className="bg-green-50 rounded-2xl p-3 flex items-center gap-2.5">
-            <img src={user.picture} className="w-9 h-9 rounded-full border-2 border-green-200 shrink-0" alt="avatar" />
+          {/* User chip */}
+          <div className="m-3 p-3 rounded-2xl flex items-center gap-2.5" style={{ background:'#f0fdf4', border:'1px solid #dcfce7' }}>
+            <img
+              src={`https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}`}
+              className="w-8 h-8 rounded-full shrink-0"
+              style={{ border:'2px solid #bbf7d0' }}
+              alt="avatar"
+            />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-700 truncate">{user.email}</p>
-              <p className="mono text-xs text-green-400 truncate">{trunc(user.wallet)}</p>
+              <p className="f-sans text-[12px] font-semibold text-green-900 truncate">{email || 'User'}</p>
+              <p className="f-mono text-[10px] text-green-500 truncate">{trunc(address)}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="text-red-400 hover:text-red-600 transition-colors shrink-0"
-              title="Logout"
-            >
-              <LogOut size={15} />
+            <button onClick={handleLogout} className="text-red-400 hover:text-red-600 transition-colors shrink-0 p-1" title="Logout">
+              <LogOut size={14}/>
             </button>
           </div>
         </aside>
 
-        <main className="w-full md:flex-1 flex flex-col overflow-auto min-w-0">
+        {/* ════════════════════════
+            MAIN
+        ════════════════════════ */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-auto">
 
-          {/* Header */}
-          <div className="flex justify-between items-center px-4 sm:px-8 py-4 sm:py-6 flex-wrap gap-3">
+          {/* ── Top bar ── */}
+          <div className="flex items-center justify-between px-5 sm:px-8 py-5 gap-4 flex-wrap" style={{ borderBottom:'1px solid #f0fdf4' }}>
             <div className="flex items-center gap-3">
-              {/* Hamburger — mobile only */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 rounded-xl bg-white border border-green-100 text-green-700 hover:bg-green-50 transition-colors shadow-sm"
-                aria-label="Open menu"
+                className="md:hidden p-2 rounded-xl text-green-700 transition-colors"
+                style={{ background:'white', border:'1.5px solid #dcfce7' }}
               >
-                <Menu size={18} />
+                <Menu size={17}/>
               </button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-green-900 tracking-tight">
-                  {tab === "overview"     && "Dashboard"}
-                  {tab === "transactions" && "Transactions"}
-                  {tab === "claims"       && "Claimable Funds"}
+                <h1 className="f-serif font-bold text-green-950 leading-none" style={{ fontSize:'clamp(20px,3vw,26px)', letterSpacing:'-0.03em' }}>
+                  {tab === 'overview'     && 'Overview'}
+                  {tab === 'transactions' && 'Transactions'}
+                  {tab === 'claims'       && 'Claimable Funds'}
                 </h1>
-                <p className="text-xs text-green-400 mt-0.5">
-                  {new Date().toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                <p className="f-sans text-[11px] text-green-600/50 mt-1">
+                  {new Date().toLocaleDateString('en-PK',{ weekday:'long', day:'numeric', month:'long', year:'numeric' })}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 items-center">
-              <span className="flex items-center gap-1.5 bg-white border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm">
-                <span className="pulse-dot w-2 h-2 rounded-full bg-green-500 inline-block" />zkSync Era
-              </span>
+
+            {/* Network badge */}
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full"
+              style={{ background:'white', border:'1.5px solid #dcfce7' }}>
+              <span className="pulse-glow w-2 h-2 rounded-full bg-green-400 inline-block"/>
+              <span className="f-sans text-[12px] font-semibold text-green-700">zkSync Era</span>
             </div>
           </div>
 
-          <div className="px-4 sm:px-8 pb-8 flex flex-col gap-4 sm:gap-5">
+          <div className="flex-1 px-5 sm:px-8 py-6 flex flex-col gap-5">
 
-            {/* ── OVERVIEW ── */}
-            {tab === "overview" && (
-              <>
-                {/* Balance card */}
-                <div className="bg-gradient-to-br from-green-800 via-green-700 to-emerald-600 rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-white relative overflow-hidden shadow-xl shadow-green-200/60">
-                  <div className="absolute -top-16 -right-16 w-56 h-56 bg-white/5 rounded-full pointer-events-none" />
-                  <div className="absolute bottom-0 left-1/3 w-36 h-36 bg-white/5 rounded-full translate-y-1/2 pointer-events-none" />
-                  <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start gap-5 sm:gap-6">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs uppercase tracking-widest text-green-300 mb-2">zkSync Wallet</p>
-                      <p className="mono text-sm sm:text-base font-medium tracking-wide break-all">{trunc(address)}</p>
-                      <div className="flex gap-2 mt-4 flex-wrap">
-                        <button onClick={copy} className="bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all active:scale-95">
-                          {copied ? "✓ Copied" : "⎘ Copy"}
-                        </button>
-                        <button onClick={() => setShowSend(true)} className="bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all active:scale-95">↑ Send</button>
-                        <button onClick={() => setShowRec(true)}  className="bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all active:scale-95">↓ Receive</button>
+            {/* ══════════════════════════
+                OVERVIEW
+            ══════════════════════════ */}
+            {tab === 'overview' && (
+              <div className="fade-up flex flex-col gap-5">
+
+                {/* Hero balance card */}
+                <div className="relative overflow-hidden rounded-[24px] p-6 sm:p-8"
+                  style={{ background:'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)' }}>
+                  {/* decorative circles */}
+                  <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none" style={{ background:'rgba(255,255,255,0.04)' }}/>
+                  <div className="absolute -bottom-8 left-1/4 w-32 h-32 rounded-full pointer-events-none" style={{ background:'rgba(255,255,255,0.04)' }}/>
+                  <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full pointer-events-none" style={{ background:'rgba(74,222,128,0.08)' }}/>
+
+                  <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start gap-6">
+                    <div>
+                      <p className="f-sans text-[10px] font-semibold tracking-[0.12em] uppercase text-green-300/70 mb-3">zkSync Wallet</p>
+                      <p className="f-mono text-sm text-green-200/80" style={{ letterSpacing:'0.02em' }}>{trunc(address)}</p>
+                      <div className="flex gap-2 mt-5 flex-wrap">
+                        {[
+                          { label: copied ? '✓ Copied' : 'Copy Address', icon:<Copy size={12}/>,          fn: copy                        },
+                          { label: 'Send',                                icon:<ArrowUpRight size={12}/>,   fn: () => setShowSend(true)    },
+                          { label: 'Receive',                             icon:<ArrowDownLeft size={12}/>,  fn: () => setShowRec(true)     },
+                        ].map(b => (
+                          <button key={b.label} onClick={b.fn}
+                            className="f-sans inline-flex items-center gap-1.5 text-[12px] font-semibold text-white px-3.5 py-2 rounded-xl transition-all active:scale-95"
+                            style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)' }}
+                            onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.18)'}
+                            onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'}
+                          >
+                            {b.icon}{b.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
+
                     <div className="sm:text-right">
-                      <p className="text-xs uppercase tracking-widest text-green-300 mb-1">Total Balance</p>
-                      <p className="text-3xl sm:text-4xl font-extrabold">{balance.usdc}</p>
-                      <p className="text-base sm:text-lg text-green-300 mt-1">{usdBalance} <span className="text-white">PKR</span></p>
+                      <p className="f-sans text-[10px] font-semibold tracking-[0.12em] uppercase text-green-300/70 mb-2">USDC Balance</p>
+                      <p className="f-mono font-semibold text-white" style={{ fontSize:'clamp(32px,5vw,48px)', letterSpacing:'-0.04em', lineHeight:1 }}>
+                        {balance.usdc}
+                      </p>
+                      <p className="f-sans text-green-300/80 text-sm mt-2">
+                        ≈ <span className="f-mono">{usdBalance}</span> <span className="text-green-200">PKR</span>
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Stats grid */}
+                {/* Stats row */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {STATS.map(st => (
-                    <div key={st.label} className={`bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-green-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all border-l-4 ${st.accent}`}>
-                      <p className="text-[10px] sm:text-xs text-green-400 font-semibold uppercase tracking-wider leading-tight">{st.label}</p>
-                      <p className="text-lg sm:text-2xl font-extrabold text-green-900 mt-1 sm:mt-1.5 break-words leading-tight">{st.value}</p>
-                      <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">{st.pkr}</p>
+                  {STATS.map((s,i) => (
+                    <div key={i} className="stat-card">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-4"
+                        style={{ background:`${s.color}12` }}>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background:s.color }}/>
+                      </div>
+                      <p className="f-sans text-[10px] font-semibold tracking-[0.1em] uppercase text-green-600/55 mb-2">{s.label}</p>
+                      <p className="f-mono font-semibold text-green-950 leading-none" style={{ fontSize:'clamp(16px,2.5vw,22px)', letterSpacing:'-0.03em' }}>
+                        {s.val}
+                      </p>
+                      <p className="f-sans text-[11px] text-green-600/40 mt-2">{s.sub}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Claimable banner */}
                 {claimableList.length > 0 && (
-                  <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl sm:rounded-2xl p-4 flex items-center gap-3 sm:gap-4 flex-wrap">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-100 flex items-center justify-center text-teal-600 text-xl shrink-0">◈</div>
+                  <div className="flex items-center gap-4 p-4 rounded-[18px] flex-wrap"
+                    style={{ background:'#ecfdf5', border:'1.5px solid #6ee7b7' }}>
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                      style={{ background:'#d1fae5', color:'#059669' }}>
+                      <Zap size={18}/>
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-teal-800">
-                        {claimableList.length} claimable request{claimableList.length > 1 ? "s" : ""} ready
+                      <p className="f-serif font-semibold text-[15px] text-green-900"
+                        style={{ letterSpacing:'-0.01em' }}>
+                        {claimableList.length} fund{claimableList.length>1?'s':''} ready to claim
                       </p>
-                      <p className="text-xs text-teal-600 mt-0.5">
-                        Total: {Number(formatEther(totalClaimable)).toFixed(4)} ETH — timelock expired
+                      <p className="f-sans text-[12px] text-green-700/60 mt-0.5">
+                        {Number(formatEther(totalClaimable)).toFixed(4)} ETH — timelock expired
                       </p>
                     </div>
-                    <button
-                      onClick={() => setTab("claims")}
-                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 shrink-0"
-                    >
-                      Claim Now
+                    <button onClick={() => setTab('claims')}
+                      className="f-sans inline-flex items-center gap-1.5 text-[13px] font-semibold text-white px-4 py-2.5 rounded-xl shrink-0 transition-all"
+                      style={{ background:'#059669' }}
+                      onMouseOver={e => e.currentTarget.style.background='#047857'}
+                      onMouseOut={e => e.currentTarget.style.background='#059669'}>
+                      Claim Now <ChevronRight size={14}/>
                     </button>
                   </div>
                 )}
 
                 {/* Recent activity */}
-                <div className="bg-white rounded-xl sm:rounded-2xl border border-green-100 shadow-sm overflow-hidden">
-                  <div className="flex justify-between items-center px-4 sm:px-5 py-3 sm:py-4 border-b border-green-50">
-                    <p className="text-sm font-bold text-green-900">Recent Activity</p>
-                    <button onClick={() => setTab("transactions")} className="text-xs text-green-500 hover:text-green-700 font-semibold transition-colors">See all →</button>
+                <div className="rounded-[20px] overflow-hidden" style={{ background:'white', border:'1.5px solid #dcfce7' }}>
+                  <div className="flex justify-between items-center px-5 py-4" style={{ borderBottom:'1px solid #f0fdf4' }}>
+                    <h3 className="f-serif font-semibold text-green-950" style={{ fontSize:16, letterSpacing:'-0.02em' }}>Recent Activity</h3>
+                    <button onClick={() => setTab('transactions')}
+                      className="f-sans inline-flex items-center gap-1 text-[12px] font-semibold text-green-600 hover:text-green-800 transition-colors">
+                      See all <ChevronRight size={13}/>
+                    </button>
                   </div>
-                  <RecentActivity address={address} />
+                  <RecentActivity address={address}/>
                 </div>
-              </>
+              </div>
             )}
 
-            {/* ── TRANSACTIONS ── */}
-            {tab === "transactions" && (
-              <div className="bg-white rounded-xl sm:rounded-2xl border border-green-100 shadow-sm overflow-hidden">
-                {/* Scrollable filter row on mobile */}
-                <div className="overflow-x-auto">
-                  <div className="flex gap-2 px-4 sm:px-5 py-3 sm:py-4 border-b border-green-50 min-w-max">
-                    {["all", "send", "receive", "Bridge", "Paid", "pending", "Claimed"].map(f => (
-                      <button
-                        key={f}
-                        onClick={() => setTxFilter(f)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap
-                          ${txFilter === f
-                            ? "bg-green-600 text-white shadow-md shadow-green-200"
-                            : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"}`}
-                      >
-                        {f.charAt(0).toUpperCase() + f.slice(1)}
+            {/* ══════════════════════════
+                TRANSACTIONS
+            ══════════════════════════ */}
+            {tab === 'transactions' && (
+              <div className="fade-up rounded-[20px] overflow-hidden" style={{ background:'white', border:'1.5px solid #dcfce7' }}>
+                <div className="overflow-x-auto" style={{ borderBottom:'1px solid #f0fdf4' }}>
+                  <div className="flex gap-2 px-5 py-4 min-w-max">
+                    {['all','send','receive','Bridge','Paid','pending','Claimed'].map(f => (
+                      <button key={f} onClick={() => setTxFilter(f)}
+                        className={`filter-pill ${txFilter===f?'on':'off'}`}>
+                        {f.charAt(0).toUpperCase()+f.slice(1)}
                       </button>
                     ))}
                   </div>
                 </div>
-                <RecentActivity address={address} txFilter={txFilter} />
+                <RecentActivity address={address} txFilter={txFilter}/>
               </div>
             )}
 
-            {/* ── CLAIMS ── */}
-            {tab === "claims" && (
-              <>
+            {/* ══════════════════════════
+                CLAIMS
+            ══════════════════════════ */}
+            {tab === 'claims' && (
+              <div className="fade-up flex flex-col gap-4">
                 {loadingClaims ? (
-                  <div className="flex justify-center items-center py-24">
-                    <div className="w-9 h-9 border-4 border-green-200 border-t-green-700 rounded-full animate-spin" />
+                  <div className="flex flex-col items-center justify-center py-24 gap-3">
+                    <RefreshCw size={24} className="spin-slow text-green-400"/>
+                    <p className="f-sans text-[13px] text-green-600/60">Loading your claims…</p>
                   </div>
 
                 ) : withdrawals.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-24 gap-3 text-center px-4">
-                    <span className="text-5xl"><Stone /></span>
-                    <p className="text-lg font-bold text-green-900">No claimable funds</p>
-                    <p className="text-sm text-green-400">When your timelock expires, funds will appear here.</p>
+                  <div className="flex flex-col items-center justify-center py-28 gap-4 text-center">
+                    <div className="w-16 h-16 rounded-[20px] flex items-center justify-center"
+                      style={{ background:'#f0fdf4', border:'1.5px solid #dcfce7' }}>
+                      <Clock size={26} className="text-green-300"/>
+                    </div>
+                    <p className="f-serif font-semibold text-[18px] text-green-900" style={{ letterSpacing:'-0.02em' }}>No claimable funds</p>
+                    <p className="f-sans text-[13px] text-green-600/55 max-w-xs">When your timelock expires, claimable funds will appear here.</p>
                   </div>
 
                 ) : (
-                  <div className="flex flex-col gap-4">
+                  <>
+                    {/* Total claimable card */}
                     {claimableList.length > 0 && (
-                      <div className="bg-gradient-to-br from-green-800 to-emerald-600 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl shadow-green-200/50">
-                        <div>
-                          <p className="text-xs uppercase tracking-widest text-green-300 mb-1">Total Claimable</p>
-                          <p className="text-2xl sm:text-3xl font-extrabold">
-                            {Number(formatEther(totalClaimable)).toFixed(4)}{" "}
-                            <span className="text-base sm:text-lg font-normal text-green-300">ETH</span>
+                      <div className="relative overflow-hidden rounded-[22px] p-6 sm:p-7 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5"
+                        style={{ background:'linear-gradient(135deg,#14532d,#166534)' }}>
+                        <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full pointer-events-none" style={{ background:'rgba(255,255,255,0.05)' }}/>
+                        <div className="relative z-10">
+                          <p className="f-sans text-[10px] font-semibold tracking-[0.12em] uppercase text-green-300/70 mb-2">Total Claimable</p>
+                          <p className="f-mono font-semibold text-white" style={{ fontSize:'clamp(26px,4vw,38px)', letterSpacing:'-0.04em', lineHeight:1 }}>
+                            {Number(formatEther(totalClaimable)).toFixed(4)}
                           </p>
+                          <p className="f-serif italic text-green-300 text-base mt-1">ETH available</p>
                         </div>
-                        <button
-                          onClick={handleClaimAll}
-                          disabled={isSomeClaming}
-                          className="w-full sm:w-auto bg-white/20 hover:bg-white/30 border border-white/25 text-white font-bold px-6 py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSomeClaming ? "Claiming…" : "Claim All"}
+                        <button onClick={handleClaimAll} disabled={isSomeClaiming}
+                          className="f-sans font-semibold text-[14px] text-white px-6 py-3.5 rounded-2xl relative z-10 transition-all disabled:opacity-50"
+                          style={{ background:'rgba(255,255,255,0.15)', border:'1.5px solid rgba(255,255,255,0.2)' }}
+                          onMouseOver={e => !isSomeClaiming && (e.currentTarget.style.background='rgba(255,255,255,0.25)')}
+                          onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
+                          {isSomeClaiming ? 'Claiming…' : 'Claim All'}
                         </button>
                       </div>
                     )}
 
+                    {/* Pending info */}
                     {pendingList.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 flex items-center gap-3">
-                        <span className="text-amber-500 text-lg shrink-0">⏳</span>
-                        <p className="text-xs text-amber-700 font-semibold">
-                          {pendingList.length} request{pendingList.length > 1 ? "s" : ""} still locked — timelock hasn't expired yet
+                      <div className="flex items-center gap-3 px-4 py-3.5 rounded-2xl"
+                        style={{ background:'#fffbeb', border:'1.5px solid #fde68a' }}>
+                        <Clock size={15} className="text-amber-500 shrink-0"/>
+                        <p className="f-sans text-[12px] font-medium text-amber-700">
+                          {pendingList.length} request{pendingList.length>1?'s':''} still locked — timelock hasn't expired yet
                         </p>
                       </div>
                     )}
 
-                    {[...claimableList, ...pendingList].map((w) => (
-                      <div
-                        key={w.requestId}
-                        className={`flex justify-between items-center rounded-xl sm:rounded-2xl px-4 sm:px-5 py-4 border transition-all gap-3
-                          ${w.isClaimable
-                            ? "bg-green-50 border-green-200"
-                            : "bg-amber-50/60 border-amber-200 opacity-75"}`}
-                      >
-                        <div className="flex flex-col gap-1 flex-1 min-w-0">
-                          <p className="font-bold text-green-900 text-sm">
-                            {Number(formatEther(w.amount)).toFixed(4)}{" "}
-                            {w.token === ZeroAddress ? "ETH" : "USDC"}
+                    {/* Claim rows */}
+                    {[...claimableList, ...pendingList].map(w => (
+                      <div key={w.requestId} className={`claim-row ${w.isClaimable?'':'locked'}`}>
+                        {/* Status dot */}
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                          style={{ background: w.isClaimable ? '#d1fae5' : '#fef3c7' }}>
+                          {w.isClaimable
+                            ? <Check size={16} style={{ color:'#059669' }}/>
+                            : <Clock size={16} style={{ color:'#d97706' }}/>
+                          }
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="f-mono font-semibold text-green-950" style={{ fontSize:15, letterSpacing:'-0.02em' }}>
+                            {w.token === ZeroAddress
+                              ? `${Number(formatEther(w.amount)).toFixed(4)} ETH`
+                              : `${Number(formatUnits(w.amount,6))} USDC`
+                            }
                           </p>
                           {w.raastId && (
-                            <p className="text-xs text-green-500 truncate">Raast ID: {w.raastId}</p>
+                            <p className="f-mono text-[11px] text-green-500/70 mt-0.5 truncate">Raast: {w.raastId}</p>
                           )}
-                          <p className="text-xs mt-0.5">
+                          <p className="f-sans text-[12px] mt-1">
                             {w.isClaimable
-                              ? <div className="flex gap-1 flex-row items-center">
-                                  <Verified size={15} />
-                                  <span className="text-emerald-600 font-semibold">Ready to claim</span>
-                                </div>
-                              : <span className="text-amber-600">⏳ Unlocks in <Countdown secondsLeft={w.secondsLeft} /></span>
+                              ? <span className="text-emerald-600 font-semibold">✓ Ready to claim</span>
+                              : <span className="text-amber-600">Unlocks in <Countdown secondsLeft={w.secondsLeft}/></span>
                             }
                           </p>
                         </div>
 
                         {w.isClaimable && (
-                          <button
-                            onClick={() => handleClaim(w.requestId)}
-                            disabled={claiming[w.requestId]}
-                            className="bg-green-700 hover:bg-green-600 text-white text-xs font-bold px-3 sm:px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                          >
-                            {claiming[w.requestId] ? "…" : "Claim"}
+                          <button onClick={() => handleClaim(w.requestId)} disabled={claiming[w.requestId]}
+                            className="f-sans font-semibold text-[13px] text-white px-4 py-2.5 rounded-xl shrink-0 transition-all disabled:opacity-50 active:scale-95"
+                            style={{ background:'#14532d' }}
+                            onMouseOver={e => !claiming[w.requestId] && (e.currentTarget.style.background='#166534')}
+                            onMouseOut={e => e.currentTarget.style.background='#14532d'}>
+                            {claiming[w.requestId] ? '…' : 'Claim'}
                           </button>
                         )}
                       </div>
                     ))}
-                  </div>
+                  </>
                 )}
-              </>
+              </div>
             )}
-          </div>
+
+          </div>{/* end content */}
         </main>
       </div>
 
-      {showSend && <SendModal onClose={() => setShowSend(false)} />}
-      {showRec  && <ReceiveModal wallet={user.wallet} onClose={() => setShowRec(false)} />}
+      {showSend && <SendModal onClose={() => setShowSend(false)}/>}
+      {showRec  && <ReceiveModal wallet={address} onClose={() => setShowRec(false)}/>}
     </>
   );
 }

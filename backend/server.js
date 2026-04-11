@@ -1,6 +1,7 @@
 import express from "express"
 import { connectDb } from "./utils/DB.js"
 import TransactionRoute from "./routes/transaction.route.js"
+import ContractRoute from "./routes/contract.route.js"
 import { startEventListeners } from "./services/blockchainService.js"
 import cors from "cors"
 import dotenv from "dotenv"
@@ -17,6 +18,7 @@ app.get("/",(req , res)=>{
 })
 
 app.use("/api",TransactionRoute);
+app.use("/api",ContractRoute);
 
 app.listen(3000 , async()=>{
     console.log("Server is working!");

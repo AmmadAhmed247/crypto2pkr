@@ -83,11 +83,9 @@ export const fetchAllWithdrawals = async (address, wallets) => {
     const contract = await getReadOnlyContract(wallets);
     const counter = await contract.userRequestCounter(address);
     if (counter === 0n) return [];
-
     const now = Math.floor(Date.now() / 1000);
-    const TIMELOCK = 24 * 60 * 60;
+    const TIMELOCK = 60 * 60 ;
     const ids = Array.from({ length: Number(counter) }, (_, i) => BigInt(i));
-
     const results = await Promise.all(
       ids.map(async (id) => {
         const w = await contract.withdrawals(address, id);
@@ -95,6 +93,8 @@ export const fetchAllWithdrawals = async (address, wallets) => {
 
         const unlocksAt = Number(w.timestamp) + TIMELOCK;
         const isClaimable = now > unlocksAt;
+        
+        
 
         return {
           requestId: id.toString(),
