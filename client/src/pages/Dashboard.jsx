@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, ArrowUpRight, Zap, Lock, Globe, TrendingUp, Github, Twitter, ChevronDown } from 'lucide-react';
-
+import {Link} from "react-router-dom"
 const useLenis = () => {
   useEffect(() => {
     const script = document.createElement('script');
@@ -8,7 +8,7 @@ const useLenis = () => {
     script.async = true;
     script.onload = () => {
       const lenis = new window.Lenis({
-        duration: 1.4,
+        duration: 2,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smooth: true,
         smoothTouch: false,
@@ -211,7 +211,7 @@ export default function Landing() {
         ::-webkit-scrollbar-thumb { background: #86efac; border-radius: 3px; }
       `}</style>
 
-      {/* ── FIXED BACKGROUND LAYER ── */}
+      {/*  FIXED BACKGROUND LAYER */}
       <div className="fixed inset-0 z-0 overflow-hidden">
         <div ref={gridRef} className="grid-bg absolute inset-0 opacity-100"/>
         <div ref={orb1} className="orb w-[600px] h-[600px] bg-green-200/40 -top-40 -left-32"/>
@@ -219,9 +219,9 @@ export default function Landing() {
         <div ref={orb3} className="orb w-[400px] h-[400px] bg-green-100/50 bottom-0 left-1/4"/>
       </div>
 
-      {/* ══════════════════════════════════
+      {/*
           HERO
-      ══════════════════════════════════ */}
+      */}
       <section className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 lg:px-[72px] pt-[80px] sm:pt-[110px] pb-20 grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 lg:gap-16 items-center min-h-screen">
 
         {/* LEFT */}
@@ -249,9 +249,9 @@ export default function Landing() {
 
           <Reveal delay={0.24} y={30}>
             <div className="flex flex-wrap gap-3 mb-11">
-              <button className="f-sans inline-flex items-center gap-2.5 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] px-7 py-4 rounded-full shadow-lg shadow-green-950/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
+              <Link to={"/launch"} className="f-sans inline-flex items-center gap-2.5 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] px-7 py-4 rounded-full shadow-lg shadow-green-950/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
                 Start Bridging <ArrowRight size={15}/>
-              </button>
+              </Link>
               <button className="f-sans inline-flex items-center gap-2 border border-green-200 hover:border-green-600 text-green-800 hover:text-green-950 font-medium text-[14px] px-6 py-4 rounded-full transition-all duration-300 hover:-translate-y-0.5 glass">
                 How it works <ChevronDown size={15}/>
               </button>
@@ -340,17 +340,17 @@ export default function Landing() {
               ))}
             </div>
 
-            <button className="f-serif italic w-full py-[15px] rounded-[16px] bg-green-950 hover:bg-green-800 text-white font-semibold text-[16px] flex items-center justify-center gap-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-950/30">
+            <Link to={"/launch"} className="f-serif italic w-full py-[15px] rounded-[16px] bg-green-950 hover:bg-green-800 text-white font-semibold text-[16px] flex items-center justify-center gap-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-green-950/30">
               Bridge Now <ArrowRight size={15}/>
-            </button>
+            </Link>
             
           </div>
         </Reveal>
       </section>
 
-      {/* ══════════════════════════════════
+      {/* 
           MARQUEE
-      ══════════════════════════════════ */}
+     */}
       <div className="relative z-10 overflow-hidden border-y border-green-100/80 bg-white/60 backdrop-blur-sm py-3.5">
         <div className="mq-run inline-flex whitespace-nowrap">
           {[...marquee,...marquee,...marquee].map((t,i) => (
@@ -361,9 +361,9 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════
+      {/* 
           STATS
-      ══════════════════════════════════ */}
+  */}
       <section className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 lg:px-[72px] py-20 sm:py-28">
         <Reveal y={50}>
           <div className="inline-flex items-center gap-2 f-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-green-600 px-3 py-1.5 rounded-full border border-green-200/70 bg-white/60 mb-5">
@@ -393,9 +393,9 @@ export default function Landing() {
 
       <div className="relative z-10 mx-5 sm:mx-8 lg:mx-[72px] h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"/>
 
-      {/* ══════════════════════════════════
+      {/*
           FEATURES
-      ══════════════════════════════════ */}
+*/}
       <section className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 lg:px-[72px] py-20 sm:py-28">
         <Reveal y={50}>
           <div className="inline-flex items-center gap-2 f-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-green-600 px-3 py-1.5 rounded-full border border-green-200/70 bg-white/60 mb-5">
@@ -427,9 +427,9 @@ export default function Landing() {
 
       <div className="relative z-10 mx-5 sm:mx-8 lg:mx-[72px] h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"/>
 
-      {/* ══════════════════════════════════
+      {/* 
           HOW IT WORKS
-      ══════════════════════════════════ */}
+    */}
       <section className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 lg:px-[72px] py-20 sm:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-24 items-start">
 
@@ -470,18 +470,18 @@ export default function Landing() {
             ))}
             <Reveal delay={0.45} y={30}>
               <div className="px-4 pt-8">
-                <button className="f-serif italic w-full py-4 rounded-[16px] bg-green-950 hover:bg-green-800 text-white font-semibold text-[16px] flex items-center justify-center gap-2.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/25">
+                <Link to={"/launch"} className="f-serif italic w-full py-4 rounded-[16px] bg-green-950 hover:bg-green-800 text-white font-semibold text-[16px] flex items-center justify-center gap-2.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/25">
                   Start Your First Bridge <ArrowRight size={15}/>
-                </button>
+                </Link>
               </div>
             </Reveal>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════
+      {/* 
           CTA
-      ══════════════════════════════════ */}
+    */}
       <section className="relative z-10 max-w-[1300px] mx-auto px-5 sm:px-8 lg:px-[72px] pb-24 sm:pb-32">
         <Reveal y={60}>
           <div className="cta-block glass border border-green-200/60 rounded-[32px] px-8 sm:px-16 py-14 sm:py-20 overflow-hidden grid grid-cols-1 md:grid-cols-[1fr_auto] gap-10 items-center shadow-xl shadow-green-200/30">
@@ -495,9 +495,9 @@ export default function Landing() {
               <p className="f-sans text-[15px] text-green-800/50">No account needed. Just connect and bridge.</p>
             </div>
             <div className="flex flex-col gap-3 min-w-[178px] relative z-10">
-              <button className="f-sans inline-flex items-center justify-center gap-2 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] py-4 px-7 rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
+              <Link to={"/launch"} className="f-sans inline-flex items-center justify-center gap-2 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] py-4 px-7 rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
                 Launch App <ArrowUpRight size={14}/>
-              </button>
+              </Link>
               <button className="f-sans inline-flex items-center justify-center gap-2 border border-green-200 hover:border-green-500 text-green-800 hover:text-green-950 font-medium text-[14px] py-4 px-7 rounded-full transition-all duration-250 bg-white/70">
                 Read Docs
               </button>
@@ -506,9 +506,9 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* ══════════════════════════════════
+      {/* 
           FOOTER
-      ══════════════════════════════════ */}
+       */}
       <footer className="relative z-10 bg-white/70 backdrop-blur-sm border-t border-green-100/80 px-5 sm:px-8 lg:px-[72px] py-10">
         <div className="max-w-[1300px] mx-auto flex flex-wrap justify-between items-center gap-4">
           <div className="f-serif italic font-semibold text-[19px] text-green-950 tracking-tight">
