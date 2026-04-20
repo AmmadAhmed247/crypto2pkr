@@ -11,7 +11,7 @@ import { useUser } from '../context/userContext.jsx';
 
 const cryptoOptions = [
   { symbol: 'ETH', name: 'Ethereum', icon: <TokenETH size={20} />, address: '0x0000000000000000000000000000000000000000' },
-  { symbol: 'USDT', name: 'Tether', icon: <TokenUSDT size={20} />, address: '0xYOUR_USDT_ADDRESS' },
+  { symbol: 'USDT', name: 'Tether', icon: <TokenUSDT size={20} />, address: '0x0000000000000000000000000000000000000000' },
   { symbol: 'USDC', name: 'USD Coin', icon: <TokenUSDC size={20} />, address: '0xAe045DE5638162fa134807Cb558E15A3F5A7F853' },
 ];
 
@@ -201,18 +201,23 @@ export default function BridgeComponent() {
       </div>
     </div>
 
+
     {/* Receive Section */}
-    <div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
-      <label className="block text-sm font-medium text-zinc-700 mb-3">To</label>
-      <div className="flex items-center gap-3">
-        <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 font-bold flex items-center gap-2">
-          <span className="text-xl">🇵🇰</span> PKR
-        </div>
-        <div className="text-3xl font-bold text-zinc-900">
-          {Number(pkrAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-        </div>
-      </div>
+<div className="bg-zinc-50 rounded-xl p-5 border border-zinc-200">
+  <label className="block text-sm font-medium text-zinc-700 mb-3">To</label>
+  <div className="flex items-center gap-3">
+    <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2.5 font-bold flex items-center gap-2">
+      <span className="text-xl">🇵🇰</span> PKR
     </div>
+    <div className="text-3xl font-bold text-zinc-900">
+      {/* Ensure pkrAmount is treated as a number for formatting */}
+      {parseFloat(pkrAmount).toLocaleString('en-US', { 
+          minimumFractionDigits: 2, 
+          maximumFractionDigits: 2 
+      })}
+    </div>
+  </div>
+</div>
 
     {/* Info Card */}
     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm">

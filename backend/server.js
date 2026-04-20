@@ -9,9 +9,9 @@ import dotenv from "dotenv"
 dotenv.config()
 const app=express()
 app.use(cors({
-    origin:"http://localhost:5173",
-    credentials:true,
-}))
+  origin: "http://localhost:5173",
+  credentials: true
+}));
 
 app.get("/",(req , res)=>{
     res.send("Working....");

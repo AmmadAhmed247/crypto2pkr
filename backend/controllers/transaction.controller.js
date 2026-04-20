@@ -48,16 +48,27 @@ export const getAccountStats = async (req, res) => {
             usdt: 0
         };
         transactions.forEach(tx => {
-            const pkr = parseFloat(tx.pkrAmount?.toString().replace(/,/g, '') || 0);
-            totalBridgedPKR += pkr;
+            
+            let pkr = 0;
+            if (tx.pkrAmount) {
+                const pkrStr = typeof tx.pkrAmount === 'string' 
+                    ? tx.pkrAmount.replace(/,/g, '') 
+                    : tx.pkrAmount.toString().replace(/,/g, '');
+                const parsed = parseFloat(pkrStr);
+                pkr = isNaN(parsed) ? 0 : parsed;
+            }
+            
             const symbol = tx.tokenSymbol?.toLowerCase(); 
             const cryptoAmt = parseFloat(tx.lockedAmount || 0);
-
-            if (symbol && volumes.hasOwnProperty(symbol)) {
-                volumes[symbol] += cryptoAmt;
+            
+            if (tx.type === "BRIDGE") {
+                totalBridgedPKR += pkr;
+                if (symbol && volumes.hasOwnProperty(symbol)) {
+                    volumes[symbol] += cryptoAmt;
+                }
             }
 
-            if (tx.status === "LOCKED") {
+            if (tx.type === "BRIDGE" && tx.status === "LOCKED") {
                 totalClaimingPKR += pkr;
             }
         });

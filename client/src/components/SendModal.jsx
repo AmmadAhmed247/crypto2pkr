@@ -54,9 +54,7 @@ function SendModal({ onClose }) {
       if (!target.startsWith("0x") || target.length !== 42) {
         throw new Error("Invalid wallet address!");
       }
-
       let tx;
-
       if (token === "ETH") {
         const parsedAmount = parseEther(amount.toString());
         const userBalance  = await provider.getBalance(address);
@@ -66,8 +64,8 @@ function SendModal({ onClose }) {
         }
 
         tx = await signer.sendTransaction({
-          to:    target,
-          value: parsedAmount,
+          to:target,
+          value:parsedAmount,
         });
 
       } else {

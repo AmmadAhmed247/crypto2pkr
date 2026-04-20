@@ -8,22 +8,19 @@ export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
     const {wallet, wallets , address}=useUser();
     const queryClient=useQueryClient();
     const[cryptoAmount, setCryptoAmount]=useState('');
-    const[pkrAmount, setPkrAmount]=useState('0.00');
+    
     const[raastId , setRaastId]=useState("");
     const[step , setStep]=useState(1);
+    const pkrAmount = (!cryptoAmount || exchangeRate <= 0) 
+    ? "0.00" 
+    : (parseFloat(cryptoAmount) * exchangeRate).toFixed(2);
     
 
-    const handleChangeAmount=(value)=>{
-        setCryptoAmount(value);
-        if(!value || exchangeRate<=0){
-            setPkrAmount("0");
-            return;
-        }
-        const pkr=(parseFloat(value)*exchangeRate).toLocaleString('en-US',{
-            minimumFractionDigits:2 , maximumFractionDigits:2
-        });
-        setPkrAmount(pkr);
+    const handleChangeAmount = (value) => {
+    if (value === '' || !isNaN(value)) {
+      setCryptoAmount(value);
     }
+  };
 
     const{mutate:lockFunds , isPending:isLocking , error:lockError}=useMutation({
         mutationFn:({ tokenAddress, amount, raastId }) =>{
@@ -44,7 +41,7 @@ export const useBridgeLogic=(exchangeRate , selectedCrypto)=>{
     const resetBridge=()=>{
         setStep(1);
         setCryptoAmount("");
-        setPkrAmount("");
+        
         setRaastId("")
     }
     return {

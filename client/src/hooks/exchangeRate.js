@@ -1,20 +1,35 @@
-
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 
-const USD_TO_PKR = 282;
+const CUSTOM_USDC_RATE = Number(import.meta.env.VITE_PKR_RATE) || 285;
 
 export const useExchangeRate = (symbol) => {
   return useQuery({
-    queryKey: ["price", symbol],
-    enabled: !!symbol, 
+    queryKey: ["exchangeRate", symbol],
+
     queryFn: async () => {
-      const { data } = await axios.get(
-        `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}USDT`
+
+      if (symbol === "USDC") {
+        console.log("Using custom USDC rate:", CUSTOM_USDC_RATE);
+        return CUSTOM_USDC_RATE;
+      }
+
+      if (symbol === "USDT") {
+        return CUSTOM_USDC_RATE;
+      }
+      if (symbol!== "ETH") {
+        throw new Error("Unsupported token"); 
+      }
+
+      const response = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=pkr"
       );
-      const usdPrice = parseFloat(data.price);
-      return usdPrice * USD_TO_PKR;
+
+      const data = await response.json();
+
+      return data.ethereum.pkr;
     },
-    refetchInterval: 60000,
+
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 };

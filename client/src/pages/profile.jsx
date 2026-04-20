@@ -131,6 +131,8 @@ export default function Dashboard() {
     refetchInterval: 4000,
   });
   const analytics = userAnalytics?.data;
+  console.log(analytics);
+  
 
   const handleLogout = () => { logout(); navigate('/'); };
 

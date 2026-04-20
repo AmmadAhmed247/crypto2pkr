@@ -74,9 +74,6 @@ function formatTokenAmount(amount, token) {
 }
 
 
-
-
-
 function getTokenSymbol(token) {
     if (token === ethers.ZeroAddress) return "ETH";
     if (token.toLowerCase() === process.env.USDC_ADDRESS?.toLowerCase()) return "USDC";

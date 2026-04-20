@@ -8,7 +8,7 @@ const useLenis = () => {
     script.async = true;
     script.onload = () => {
       const lenis = new window.Lenis({
-        duration: 2,
+        duration: 1,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smooth: true,
         smoothTouch: false,

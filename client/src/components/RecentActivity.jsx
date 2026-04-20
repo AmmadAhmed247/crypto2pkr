@@ -114,7 +114,7 @@ const RecentActivity = ({ address, txFilter }) => {
                       : "text-green-500"
                     }`}
                 >
-                  {tx.tokenSymbol}
+                  {tx.tokenSymbol ? tx.tokenSymbol : "Unknown"}
                 </span>
               </td>
 
