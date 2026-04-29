@@ -1,90 +1,154 @@
 import Transaction from "../models/TransactionSchema.js";
 
-export const getAllTransaction=async(req , res)=>{
-    try {
-        const txs=await Transaction.find().sort({createdAt:-1});
-        res.status(200).json(txs)
-    } catch (error) {
-        res.status(500).json({"Error":error.message})
-    }
-}
 
-export const getUserTransaction=async(req , res)=>{
-    try {
-        const {address}=req.params;
-        console.log(address);
-        const txs=await Transaction.find({userAddress:address}).sort({createdAt:-1});
-        const totalPkr=txs.reduce((sum , tx)=>{
-            const amount = tx.pkrAmount ? parseFloat(tx.pkrAmount.replace(/,/g, '')) : 0;
-            return sum+(isNaN(amount)? 0 :  amount)
-        },0)
-        const totalUsd=txs.reduce((sum ,  tx)=>{
-            const usdAmount=tx.lockedAmount ? parseFloat(tx.lockedAmount): 0 ; 
-            return sum+(isNaN(usdAmount) ? 0 : usdAmount)
-        },0)
-        res.status(200).json({transactions:txs ,
-            totalUsd:totalUsd.toLocaleString("en-US",{
-            minimumFractionDigits:2
-        }) , totalPkr: totalPkr.toLocaleString("en-US",{
-            minimumFractionDigits:2
-        }) });
-    } catch (error) {
-        res.status(500).json({"Error":error.message})
+export const getAllTransaction = async (req, res) => {
+  try {
+    const txs = await Transaction.find().sort({ createdAt: -1 });
+    res.status(200).json(txs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getUserTransaction = async (req, res) => {
+  try {
+    const { address } = req.params;
+    if (!address) {
+      return res.status(400).json({ error: "Address is required" });
     }
-}
+    const userAddr = address.toLowerCase();
+    const [txs, stats] = await Promise.all([
+      Transaction.find({ userAddress: userAddr }).sort({ createdAt: -1 }),
+
+      Transaction.aggregate([
+        { $match: { userAddress: userAddr } },
+        {
+          $group: {
+            _id: null,
+            totalPkr: {
+              $sum: {
+                $toDouble: {
+                  $replaceAll: {
+                    input: "$pkrAmount",
+                    find: ",",
+                    replacement: "",
+                  },
+                },
+              },
+            },
+            totalUsd: {
+              $sum: { $toDouble: "$lockedAmount" },
+            },
+          },
+        },
+      ]),
+    ]);
+
+    const stat = stats[0] || { totalPkr: 0, totalUsd: 0 };
+    return res.status(200).json({
+      transactions: txs,
+      totalUsd: stat.totalUsd.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+      }),
+      totalPkr: stat.totalPkr.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+      }),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
 
 
 export const getAccountStats = async (req, res) => {
-    try {
-        const { address } = req.params;
-        const userAddr = address.toLowerCase();
-        const transactions = await Transaction.find({ userAddress: userAddr });
-        let totalBridgedPKR = 0;
-        let totalClaimingPKR = 0;
-        
-        let volumes = {
-            eth: 0,
-            usdc: 0,
-            usdt: 0
-        };
-        transactions.forEach(tx => {
-            
-            let pkr = 0;
-            if (tx.pkrAmount) {
-                const pkrStr = typeof tx.pkrAmount === 'string' 
-                    ? tx.pkrAmount.replace(/,/g, '') 
-                    : tx.pkrAmount.toString().replace(/,/g, '');
-                const parsed = parseFloat(pkrStr);
-                pkr = isNaN(parsed) ? 0 : parsed;
-            }
-            
-            const symbol = tx.tokenSymbol?.toLowerCase(); 
-            const cryptoAmt = parseFloat(tx.lockedAmount || 0);
-            
-            if (tx.type === "BRIDGE") {
-                totalBridgedPKR += pkr;
-                if (symbol && volumes.hasOwnProperty(symbol)) {
-                    volumes[symbol] += cryptoAmt;
-                }
-            }
+  try {
+    const { address } = req.params;
+    const userAddr = address.toLowerCase();
 
-            if (tx.type === "BRIDGE" && tx.status === "LOCKED") {
-                totalClaimingPKR += pkr;
-            }
-        });
+    const stats = await Transaction.aggregate([
+      { $match: { userAddress: userAddr } },
 
-        res.status(200).json({
-            success: true,
-            data: {
-                totalBridged: totalBridgedPKR.toLocaleString("en-US", { minimumFractionDigits: 2 }),
-                totalClaiming: totalClaimingPKR.toLocaleString("en-US", { minimumFractionDigits: 2 }),
-                ethTotal: volumes.eth.toFixed(4),
-                usdcTotal: volumes.usdc.toFixed(2),
-                count: transactions.length
-            }
-        });
+      {
+        $addFields: {
+          pkrNumeric: {
+            $toDouble: {
+              $replaceAll: {
+                input: "$pkrAmount",
+                find: ",",
+                replacement: "",
+              },
+            },
+          },
+          usdNumeric: { $toDouble: "$lockedAmount" },
+          symbol: { $toLower: "$tokenSymbol" },
+        },
+      },
 
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+      {
+        $group: {
+          _id: null,
+
+          totalBridged: {
+            $sum: {
+              $cond: [{ $eq: ["$type", "BRIDGE"] }, "$pkrNumeric", 0],
+            },
+          },
+
+          totalClaiming: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", "BRIDGE"] },
+                    { $eq: ["$status", "LOCKED"] },
+                  ],
+                },
+                "$pkrNumeric",
+                0,
+              ],
+            },
+          },
+
+          ethTotal: {
+            $sum: {
+              $cond: [{ $eq: ["$symbol", "eth"] }, "$usdNumeric", 0],
+            },
+          },
+
+          usdcTotal: {
+            $sum: {
+              $cond: [{ $eq: ["$symbol", "usdc"] }, "$usdNumeric", 0],
+            },
+          },
+
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const data = stats[0] || {
+      totalBridged: 0,
+      totalClaiming: 0,
+      ethTotal: 0,
+      usdcTotal: 0,
+      count: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalBridged: data.totalBridged.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+        }),
+        totalClaiming: data.totalClaiming.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+        }),
+        ethTotal: data.ethTotal.toFixed(4),
+        usdcTotal: data.usdcTotal.toFixed(2),
+        count: data.count,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 };

@@ -12,6 +12,8 @@ import About from './pages/About.jsx'
 import Launch from './pages/Launch.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Profile from "./pages/profile.jsx"
+import Admin from './pages/Admin.jsx'
+import { Toaster } from "react-hot-toast";
 
 
 const zkSyncSepolia = defineChain({
@@ -45,6 +47,7 @@ const router = createBrowserRouter([
       { path: "/launch", element: <Launch /> },
       { path: "/profile", element: <Profile /> },
       { path: "/bridge", element: <Profile /> },
+      { path: "/admin", element: <Admin /> },
     ]
   }
 ])
@@ -72,6 +75,18 @@ createRoot(document.getElementById('root')).render(
     >
       <UserProvider>
         <QueryClientProvider client={queryClient}>
+           <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: "#020617",
+                color: "#e2e8f0",
+                border: "1px solid #1e293b",
+                borderRadius: "10px",
+              },
+            }}
+          />
           <RouterProvider router={router} />
         </QueryClientProvider>
       </UserProvider>
