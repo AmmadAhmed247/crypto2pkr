@@ -148,22 +148,22 @@ export default function BridgeComponent() {
         <span>Balance: {getCurrentBalance()} {selectedCrypto}</span>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {cryptoOptions.map((opt) => (
-          <button
-            key={opt.symbol}
-            onClick={() => setSelectedCrypto(opt.symbol)}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2 ${
-              selectedCrypto === opt.symbol
-                ? "bg-zinc-900 text-white border-zinc-900 shadow-md"
-                : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100"
-            }`}
-          >
-            {opt.icon}
-            {opt.symbol}
-          </button>
-        ))}
-      </div>
+      <div className="flex gap-1.5 w-full mb-6 overflow-x-auto no-scrollbar">
+  {cryptoOptions.map((opt) => (
+    <button
+      key={opt.symbol}
+      onClick={() => setSelectedCrypto(opt.symbol)}
+      className={`flex-shrink-0 py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+        selectedCrypto === opt.symbol
+          ? "bg-zinc-900 text-white border-zinc-900 shadow-md"
+          : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100"
+      }`}
+    >
+      {opt.icon}
+      {opt.symbol}
+    </button>
+  ))}
+</div>
 
       {/* 2. Amount Input Section */}
       <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-zinc-100 shadow-sm">

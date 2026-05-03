@@ -14,7 +14,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import Profile from "./pages/profile.jsx"
 import Admin from './pages/Admin.jsx'
 import { Toaster } from "react-hot-toast";
-
+import ProtectedRoute from './protectedRoute.jsx'
 
 const zkSyncSepolia = defineChain({
   id: 300,
@@ -43,11 +43,11 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <Dashboard /> },
       { path: "/contact", element: <Contact /> },
-      { path: "/about", element: <About /> },
+      { path: "/howitworks", element: <About /> },
       { path: "/launch", element: <Launch /> },
       { path: "/profile", element: <Profile /> },
       { path: "/bridge", element: <Profile /> },
-      { path: "/admin", element: <Admin /> },
+      { path: "/admin", element: <ProtectedRoute><Admin /></ProtectedRoute> },
     ]
   }
 ])

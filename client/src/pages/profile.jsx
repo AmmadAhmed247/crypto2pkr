@@ -6,7 +6,6 @@ import { Menu, LayoutDashboard, BadgeCheck, LogOut, X, ArrowUpRight, ArrowDownLe
 import { useUser } from "../context/userContext";
 import RecentActivity from "../components/RecentActivity";
 import { useQuery } from "@tanstack/react-query";
-import { useBridgeLogic } from "../hooks/bridgeLogic";
 import axios from "axios";
 import { useExchangeRate } from "../hooks/exchangeRate";
 import { formatEther, formatUnits, ZeroAddress } from "ethers";

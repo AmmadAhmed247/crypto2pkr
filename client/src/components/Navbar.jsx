@@ -164,7 +164,7 @@ export default function Navbar() {
           {/* Center nav links */}
           <div className="nb-links">
             <Link to="/contact" className="nb-link">Contact</Link>
-            <Link to="/about"   className="nb-link">About</Link>
+            <Link to="/howitworks"   className="nb-link">How it works</Link>
 
             {/* Address pill — sits in center on desktop */}
             {address && (

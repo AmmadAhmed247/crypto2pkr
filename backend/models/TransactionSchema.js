@@ -19,6 +19,7 @@ const transactionSchema = new mongoose.Schema({
         enum: ["LOCKED", "PAID", "FAILED", "REFUNDED","CLAIMED"],
         default: "LOCKED"
     },
+    isAdmin: { type: Boolean, default: false },
     errorMessage: { type: String }
 }, { timestamps: true });
 

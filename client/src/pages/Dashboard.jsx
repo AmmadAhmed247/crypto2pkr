@@ -114,6 +114,7 @@ export default function Landing() {
     { n:'02', t:'Enter your amount',    d:'Choose USDC or USDT and type how much you want converted to Pakistani Rupees.' },
     { n:'03', t:'Receive in Raast',     d:'Funds land in your Raast account in under 10 seconds. No paperwork, no waiting.' },
   ];
+  
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6fcf7]" style={{ fontFamily:"'Instrument Sans', sans-serif" }}>
@@ -252,9 +253,9 @@ export default function Landing() {
               <Link to={"/launch"} className="f-sans inline-flex items-center gap-2.5 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] px-7 py-4 rounded-full shadow-lg shadow-green-950/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
                 Start Bridging <ArrowRight size={15}/>
               </Link>
-              <button className="f-sans inline-flex items-center gap-2 border border-green-200 hover:border-green-600 text-green-800 hover:text-green-950 font-medium text-[14px] px-6 py-4 rounded-full transition-all duration-300 hover:-translate-y-0.5 glass">
+              <Link to={"/howitworks"} className="f-sans inline-flex items-center gap-2 border border-green-200 hover:border-green-600 text-green-800 hover:text-green-950 font-medium text-[14px] px-6 py-4 rounded-full transition-all duration-300 hover:-translate-y-0.5 glass">
                 How it works <ChevronDown size={15}/>
-              </button>
+              </Link>
             </div>
           </Reveal>
 
@@ -498,9 +499,7 @@ export default function Landing() {
               <Link to={"/launch"} className="f-sans inline-flex items-center justify-center gap-2 bg-green-950 hover:bg-green-800 text-white font-semibold text-[14px] py-4 px-7 rounded-full transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-green-950/30">
                 Launch App <ArrowUpRight size={14}/>
               </Link>
-              <button className="f-sans inline-flex items-center justify-center gap-2 border border-green-200 hover:border-green-500 text-green-800 hover:text-green-950 font-medium text-[14px] py-4 px-7 rounded-full transition-all duration-250 bg-white/70">
-                Read Docs
-              </button>
+              
             </div>
           </div>
         </Reveal>
@@ -515,13 +514,13 @@ export default function Landing() {
             <img className='w-20' src="l2.png" alt="" />
           </div>
           <span className="f-sans text-[12px] text-green-700/30">Powered by zkSync · Secure · Fast · Reliable</span>
-          <div className="flex gap-4">
+          {/* <div className="flex gap-4">
             {[Github, Twitter].map((Icon,i) => (
               <a key={i} className="text-green-700/25 hover:text-green-600 transition-colors duration-200 cursor-pointer">
                 <Icon size={17}/>
               </a>
             ))}
-          </div>
+          </div> */}
         </div>
         <div className="max-w-[1300px] mx-auto mt-6 pt-5 border-t border-green-50 text-center">
           <span className="f-sans text-[11px] text-green-700/25">© 2025 PKR Bridge. All rights reserved.</span>
