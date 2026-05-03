@@ -10,7 +10,7 @@ dotenv.config()
 const app=express()
 app.use(express.json());
 app.use(cors({
-  origin: "https://crypto2pkr.vercel.app/",
+  origin: "https://crypto2pkr.vercel.app",
   credentials: true
 }));
 
