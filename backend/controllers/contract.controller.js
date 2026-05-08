@@ -2,7 +2,7 @@ import { Wallet, Provider, Contract } from "zksync-ethers";
 import { ethers } from "ethers";
 import TransactionSchema from "../models/TransactionSchema.js";
 import vaultAbi from "../utils/abi.json" with { type: "json" };
-
+import FaucetSchema from "../models/Faucet.Schema.js";
 const provider = new Provider("https://sepolia.era.zksync.dev");
 
 const wallet = new Wallet(process.env.ADMIN_WALLET_KEY, provider);
@@ -123,3 +123,41 @@ export const checkTxStatus = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+export const fundUser=async(req , res  )=>{
+  const{address}=req.body;
+  if(!address){
+    console.log('address is undefined...');
+    return
+    
+  }
+  let user=await FaucetSchema.findOne({address});
+  if(!user){
+    user =await FaucetSchema.create({
+      address:address,claims:0
+    })
+  }
+
+  if(user.claims>=2){
+    return res.status(403).json({
+      message:'Claim limit has been reached.',
+      success:false
+    })
+  }
+
+  try {
+    const tx=await wallet.sendTransaction({
+      to:address,
+      value:ethers.parseEther('0.0001')
+    });
+    await tx.wait();
+    user.claims+=1;
+    await user.save();
+    console.log('successfully send...');
+    
+    res.json({success:true , hash:tx.hash , remaining:2-user.claims});
+  } catch (error) {
+    res.status(500).json(error.message);
+  }
+}

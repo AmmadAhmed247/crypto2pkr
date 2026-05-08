@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Menu, LogOut, User as UserIcon, BringToFront, X, Copy } from "lucide-react"
 import MobileOptions from './MobileOptions.jsx'
 import { useUser } from "../context/userContext"
+import axios from "axios"
+import toast from "react-hot-toast"
 
 export default function Navbar() {
   const [isOpen, setIsOpen]   = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [copied, setCopied]   = useState(false);
   const { isAuthenticated, logout, address } = useUser();
+  const[funding , setFunding]=useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,6 +20,25 @@ export default function Navbar() {
     window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
+
+
+
+  const fundUser=async (address) => {
+    try {
+      setFunding(true)
+      const res=await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/admin/sendfund`,{
+      address:address
+    });
+    toast.success('Funds sent successfully')
+    return res.data.hash;
+    } catch (error) {
+      console.error(error.message);
+      toast.error(error?.response?.data?.message || 'Someting went wrong ... ')
+
+    }finally{
+      setFunding(false);
+    }
+  }
 
   const handleDisconnect = () => { logout(); navigate('/'); };
 
@@ -194,6 +217,48 @@ export default function Navbar() {
                 <button onClick={handleDisconnect} className="nb-btn nb-btn-danger">
                   <LogOut size={13}/> Disconnect
                 </button>
+               <div className="relative group inline-block">
+
+  <button
+    disabled={funding}
+    onClick={() => fundUser(address)}
+    className={`
+      px-3 py-2 text-sm rounded-2xl border
+      transition
+      ${
+        funding
+          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+          : "text-green-400 border-green-200 hover:bg-green-50"
+      }
+    `}
+  >
+    {funding ? "Sending..." : "Claim Funds"}
+  </button>
+
+  {/* Tooltip */}
+  <div
+    className="
+      absolute
+      opacity-0 invisible
+      group-hover:opacity-100
+      group-hover:visible
+      transition-all duration-200
+      bottom-[-55px]
+      left-1/2
+      -translate-x-1/2
+      bg-black text-white
+      text-xs
+      px-3 py-2
+      rounded-xl
+      whitespace-nowrap
+      shadow-lg
+      z-50
+    "
+  >
+    Receive test ETH for trying the platform
+  </div>
+
+</div>
               </>
             ) : (
               <Link to="/launch" className="nb-btn nb-btn-solid">

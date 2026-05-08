@@ -29,7 +29,7 @@ export const useExchangeRate = (symbol) => {
       return data.ethereum.pkr;
     },
 
-    refetchInterval: 30000,
-    staleTime: 10000,
+    refetchInterval: 50000,
+    staleTime: 50000,
   });
 };

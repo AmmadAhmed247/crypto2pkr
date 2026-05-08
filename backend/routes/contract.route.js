@@ -6,5 +6,9 @@ router.get("/status/:txHash",checkTxStatus)
 router.post("/pending",getPendingWithdrawals);
 
 
+router.post("/faucet",async(req , res)=>{
+    
+})
+
 
 export default router;
