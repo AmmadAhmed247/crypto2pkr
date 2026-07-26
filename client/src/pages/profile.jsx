@@ -204,7 +204,7 @@ export default function Dashboard() {
           {/* Logo */}
           <div className="flex items-center justify-between px-5 pt-6 pb-5" style={{ borderBottom:'1px solid #f0fdf4' }}>
             <Link to="/" className="f-serif italic font-semibold text-[19px] text-green-950" style={{ textDecoration:'none', letterSpacing:'-0.02em' }}>
-              rupia<span className="text-green-400 not-italic">.</span>
+              rupio<span className="text-green-400 not-italic">.</span>
             </Link>
             <button onClick={() => setSidebarOpen(false)} className="md:hidden text-green-400 hover:text-green-700 transition-colors p-1">
               <X size={17}/>

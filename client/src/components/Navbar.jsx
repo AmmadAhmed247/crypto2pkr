@@ -181,7 +181,7 @@ export default function Navbar() {
 
           {/* Logo — center on mobile, left on desktop */}
           <Link to="/" className="nb-logo">
-            <img className='w-20' src="l2.png" alt="" />
+            <img className='w-20' src="mainlogotransparent.png" alt="" />
           </Link>
 
           {/* Center nav links */}
